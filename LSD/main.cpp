@@ -4,7 +4,7 @@
 #include <math.h>
 #include <time.h>
 #include <fstream>
-//#define _disp_
+#define _disp_
 using namespace cv;
 using namespace std;
 
@@ -13,10 +13,8 @@ const int MAXLEN = 10000;
 double sca = 0.3, sig = 0.6, angThre = 22.5, denThre = 0.7;
 int pseBin = 1024, regCnt = 0;
 #ifdef _disp_
-Mat mapDispOri = Mat::zeros(128, 413, CV_64FC3);
-Mat mapDispTri = Mat::zeros(384, 1239, CV_64FC3);
-Mat mapDispBase = Mat::zeros(384, 1239, CV_64FC3);
-Mat mapDisp = Mat::zeros(384, 1239, CV_64FC3);
+Mat mapDispBase = Mat::zeros(600, 1239, CV_64FC3);//384*1239
+Mat mapDisp = Mat::zeros(600, 1239, CV_64FC3);
 #endif
 typedef struct _nodeBinCell {
 	int value;
@@ -57,6 +55,7 @@ typedef struct _structRectangleConverter {
 	double dy;
 	double p;
 	double prec;
+	struct _structRectangleConverter *next;
 }structRec;
 
 typedef struct _structCenterGetter {
@@ -171,18 +170,13 @@ void main() {
 #ifdef _disp_
 	for (cnt_row = 0; cnt_row < newMapRow; cnt_row++) {
 		for (cnt_col = 0; cnt_col < newMapCol; cnt_col++) {
-			if (GaussImage.ptr<double>(cnt_row)[cnt_col] > 0) {
-				mapDispOri.ptr<double>(cnt_row)[cnt_col * 3] = 255;
-				mapDispOri.ptr<double>(cnt_row)[cnt_col * 3 + 1] = 255;
-				mapDispOri.ptr<double>(cnt_row)[cnt_col * 3 + 2] = 255;
-			}
-			else {
-				mapDispOri.ptr<double>(cnt_row)[cnt_col * 3] = 155 / 255.0;
-				mapDispOri.ptr<double>(cnt_row)[cnt_col * 3 + 1] = 211 / 255.0;
-				mapDispOri.ptr<double>(cnt_row)[cnt_col * 3 + 2] = 254 / 255.0;
-			}
+			if (GaussImage.ptr<double>(cnt_row)[cnt_col] > 0)
+				drawPoint(mapDisp, cnt_col, cnt_row, 255, 255, 255);
+			else
+				drawPoint(mapDisp, cnt_col, cnt_row, 155, 211, 254);
 		}
 	}
+	mapDisp.copyTo(mapDispBase);
 	//ofstream Fs("E:/NUC/LSD/Disp.xls");
 	//int cnt_i, cnt_j;
 	//for (cnt_i = 0; cnt_i < newMapRow; cnt_i++) {
@@ -192,13 +186,7 @@ void main() {
 	//	Fs << endl;
 	//}
 	//Fs.close();
-	resize(mapDispOri, mapDispTri, Size(), 3, 3, 0);
-	mapDisp = mapDispTri.clone();
 #endif
-	//imshow("GaussImage", GaussImage);
-	//imshow("mapDispOri", mapDispOri);
-	//imshow("mapDisp", mapDisp);
-	//waitKey(0);
 
 	//计算梯度
 	Mat usedMap = Mat::zeros(newMapRow, newMapCol, CV_8UC1);//记录像素点状态
@@ -208,78 +196,32 @@ void main() {
 	double gradThre = 2.0 / sin(degThre);//梯度阈值
 	//printf("%f %f\n", degThre, gradThre);
 	
-	//感觉这个矩阵运算是一个非常低效的过程 后面再优化
-	Mat A = Mat::zeros(newMapRow, newMapCol, CV_64FC1);
-	Mat B = Mat::zeros(newMapRow, newMapCol, CV_64FC1);
-	Mat C = Mat::zeros(newMapRow, newMapCol, CV_64FC1);
-	Mat D = Mat::zeros(newMapRow, newMapCol, CV_64FC1);
+	//计算梯度和level-line场方向
+	double maxGrad = 0;
 	int x, y;
-	//A 原矩阵
-	for (y = 0; y < newMapRow; y++) {
-		for (x = 0; x < newMapCol; x++) {
-			A.ptr<double>(y)[x] = GaussImage.ptr<double>(y)[x];
-		}
-	}
-	//B 右上 A左移一格
-	for (y = 0; y < newMapRow; y++) {
-		for (x = 1; x < newMapCol; x++) {
-			B.ptr<double>(y)[x - 1] = GaussImage.ptr<double>(y)[x];
-		}
-	}
-	for (y = 0; y < newMapRow; y++) {
-			B.ptr<double>(y)[newMapCol - 1] = GaussImage.ptr<double>(y)[newMapCol - 1];
-	}
-	//C 左下 A上移一格
-	for (y = 1; y < newMapRow; y++) {
-		for (x = 0; x < newMapCol; x++) {
-			C.ptr<double>(y - 1)[x] = GaussImage.ptr<double>(y)[x];
-		}
-	}
-	for (x = 0; x < newMapCol; x++) {
-		C.ptr<double>(newMapRow - 1)[x] = GaussImage.ptr<double>(newMapRow - 1)[x];
-	}
-	//D 右下 A左上移一格
 	for (y = 1; y < newMapRow; y++) {
 		for (x = 1; x < newMapCol; x++) {
-			D.ptr<double>(y - 1)[x - 1] = GaussImage.ptr<double>(y)[x];
-		}
-	}
-	for (y = 0; y < newMapRow; y++) {
-		D.ptr<double>(y)[newMapCol - 1] = GaussImage.ptr<double>(y)[newMapCol - 1];
-	}
-	for (x = 0; x < newMapCol; x++) {
-		D.ptr<double>(newMapRow - 1)[x] = GaussImage.ptr<double>(newMapRow - 1)[x];
-	}
-
-	double gradX, gradY, maxGrad = 0;
-	for (y = 0; y < newMapRow; y++) {
-		for (x = 0; x < newMapCol; x++) {
-			gradX = (B.ptr<double>(y)[x] + D.ptr<double>(y)[x] - A.ptr<double>(y)[x] - C.ptr<double>(y)[x]) / 2.0;
-			gradY = (C.ptr<double>(y)[x] + D.ptr<double>(y)[x] - A.ptr<double>(y)[x] - B.ptr<double>(y)[x]) / 2.0;
-			double valueMagMap = sqrt(pow(gradX, 2) + pow(gradY, 2));
+			double gradX, gradY, valueMagMap, valueDegMap;
+			double A, B, C, D;
+			A = GaussImage.ptr<double>(y)[x];
+			B = GaussImage.ptr<double>(y)[x - 1];
+			C = GaussImage.ptr<double>(y - 1)[x];
+			D = GaussImage.ptr<double>(y - 1)[x - 1];
+			gradX = (B + D - A - C) / 2.0;
+			gradY = (C + D - A - B) / 2.0;
+			valueMagMap = sqrt(pow(gradX, 2) + pow(gradY, 2));
 			magMap.ptr<double>(y)[x] = valueMagMap;
 			if (valueMagMap < gradThre)
 				usedMap.ptr<uint8_t>(y)[x] = 1;
 			if (maxGrad < valueMagMap)
 				maxGrad = valueMagMap;
-			double valueDegMap = atan2(gradX, -gradY);
+			valueDegMap = atan2(gradX, -gradY);
 			if (abs(valueDegMap - pi) < 0.000001)
 				valueDegMap = 0;
 			degMap.ptr<double>(y)[x] = valueDegMap;
 		}
-	}//计算结果和MATLAB有出入
-	
-	 //ofstream Fs("E:/NUC/LSD/DEG.xls");
-	 //int cnt_i, cnt_j;
-	 //for (cnt_i = 0; cnt_i < newMapRow; cnt_i++) {
-	 //	for (cnt_j = 0; cnt_j < newMapCol; cnt_j++) {
-	 //		Fs << (double)degMap.ptr<double>(cnt_i)[cnt_j] << '\t';
-	 //	}
-	 //	Fs << endl;
-	 //}
-	 //Fs.close();
-
-	//梯度值的伪排序
+	}
+	//储存梯度值到数组
 	int len_binCell = 0;
 	Mat pseIdx = Mat::zeros(newMapRow, newMapCol, CV_16UC1);
 	double zoom = 1.0 * pseBin / maxGrad;
@@ -303,15 +245,20 @@ void main() {
 				binCell[cnt_binCell].y = y;
 				cnt_binCell++;
 			}
-			
 		}
 	}
+	pseIdx.release();
+	//梯度值的排序
 	qsort(binCell, cnt_binCell, sizeof(nodeBinCell), Comp);
-	//int cnt;
-	//printf("%d\n", cnt_binCell);
-	//for (cnt = 0; cnt < len_binCell; cnt++) {
-	//	printf("%d %d %d\n", binCell[cnt].x, binCell[cnt].y, binCell[cnt].value);
-	//}
+	 //ofstream Fs("E:/NUC/LSD/DEG.xls");
+	 //int cnt_i, cnt_j;
+	 //for (cnt_i = 0; cnt_i < newMapRow; cnt_i++) {
+	 //	for (cnt_j = 0; cnt_j < newMapCol; cnt_j++) {
+	 //		Fs << (double)degMap.ptr<double>(cnt_i)[cnt_j] << '\t';
+	 //	}
+	 //	Fs << endl;
+	 //}
+	 //Fs.close();
 
 	//按照伪排序的等级 依次搜索种子像素
 	double logNT = 5 * (log10(newMapRow) + log10(newMapCol)) / 2.0;//测试数量的对数值
@@ -319,198 +266,114 @@ void main() {
 	double aliPro = angThre / 180.0;
 	
 	//记录生长区域和矩形
-	structReg *regSave = (structReg*)malloc(MAXLEN * sizeof(structReg));
-	structRec *recSave = (structRec*)malloc(MAXLEN * sizeof(structRec));
+	structRec *recSaveHead = (structRec*)malloc(sizeof(structRec));
+	structRec *recSaveNow = recSaveHead;
 	recSaveDisp = (structRec*)malloc(MAXLEN * sizeof(structRec));
 	Mat regIdx = Mat::zeros(newMapRow, newMapCol, CV_8UC1);
 	Mat lineIm = Mat::zeros(oriMapRow, oriMapCol, CV_8UC1);//记录直线图像
-#ifdef _disp_
-	mapDisp.copyTo(mapDispBase);
-#endif
 
 	int i = 0;
 	cnt_binCell = 0;
-	for (i = 0; i < pseBin; i++) {
-		int value_pseBin = pseBin - i;//binCell为倒序排列，计算出Mat对应的值
-		int cnt_sameValue = 0, len_sameValue = 0;
-		//统计有多少个相同的值
-		for (cnt_sameValue = cnt_binCell; cnt_sameValue < len_binCell; cnt_sameValue++) {
-//debug
-//			if (i == 507)
-//				printf("%d %d %d\n", binCell[cnt_sameValue].value, binCell[cnt_sameValue].x, binCell[cnt_sameValue].y);
-//end-debug
-			if (binCell[cnt_sameValue].value == value_pseBin) {
-				//数组总指针向前，同时相同数量+1
-				cnt_binCell++;
-				len_sameValue++;
-			}
-			else
-				break;
+	for (i = 0; i < len_binCell; i++) {
+		int yIdx = binCell[i].y;
+		int xIdx = binCell[i].x;
+		if (usedMap.ptr<uint8_t>(yIdx)[xIdx] != 0)
+			continue;
+#ifdef _disp_
+		//初始化显示
+		mapDispBase.copyTo(mapDisp);
+#endif 
+		//区域增长 返回curMap和reg
+		structRegionGrower RG = RegionGrower(xIdx, yIdx, usedMap, degMap.ptr<double>(yIdx)[xIdx], degMap, degThre);
+		structReg reg = RG.reg;
+
+		//删除小区域
+		if (reg.num < regThre) {
+			continue;
 		}
-		
-		if (len_sameValue != 0) {
-			int j = 0;
-			for (j = len_sameValue; j > 0; j--) {
-				int yIdx = binCell[cnt_binCell - j].y;
-				int xIdx = binCell[cnt_binCell - j].x;
-				if (usedMap.ptr<uint8_t>(yIdx)[xIdx] != 0)
-					continue;
-				structReg reg;
-				//区域增长 返回curMap和reg
+		//矩阵近似 返回rec
+		structRec rec = RectangleConverter(reg, magMap, aliPro, degThre);
 #ifdef _disp_
-				//初始化显示
-				mapDispBase.copyTo(mapDisp);
+		//储存rec
+		mapDispBase.copyTo(mapDisp);
+		recSaveDisp[regCnt] = rec;
 #endif 
-				structRegionGrower RG = RegionGrower(xIdx, yIdx, usedMap, degMap.ptr<double>(yIdx)[xIdx], degMap, degThre);
-				reg = RG.reg;
-//debug
-				//if (i == 507) {
-				//	ofstream Fsrg("E:/NUC/LSD/RG.xls");
-				//	int cnt_i, cnt_j;
-				//	for (cnt_i = 0; cnt_i < newMapRow; cnt_i++) {
-				//		for (cnt_j = 0; cnt_j < newMapCol; cnt_j++) {
-				//			Fsrg << (int)RG.curMap.ptr<uint8_t>(cnt_i)[cnt_j] << '\t';
-				//		}
-				//		Fsrg << endl;
-				//	}
-				//	Fsrg.close();
-				//	printf("reg--deg:%lf num:%d x:%d y:%d\n", reg.deg, reg.num, reg.x, reg.y);
-				//	for (cnt_i = 0; cnt_i < reg.num; cnt_i++) {
-				//		printf("%d %d %d\n", cnt_i, reg.regPts_x[cnt_i], reg.regPts_y[cnt_i]);
-				//	}
-				//}
-//end-debug
-				//删除小区域
-				if (reg.num < regThre) {
-//#ifdef _disp_
-//					//显示状态
-//					mapDispBase.copyTo(mapDisp);
-//					drawText("Too Small", 350);
-//					drawRecs();
-//					imshow("mapDisp", mapDisp);
-//					waitKey(300);
-//#endif 
-					continue;
-				}
-				//矩阵近似 返回rec
-				structRec rec = RectangleConverter(reg, magMap, aliPro, degThre);
-#ifdef _disp_
-				//储存rec
-				mapDispBase.copyTo(mapDisp);
-				recSaveDisp[regCnt] = rec;
-#endif 
-//debug
-				//if (i == 507) {
-				//	printf("rec--cX:%lf cY:%lf deg:%lf dx:%lf dy:%lf p:%lf ", rec.cX, rec.cY, rec.deg, rec.dx, rec.dy, rec.p);
-				//	printf("prec:%lf wid:%lf x1:%lf y1:%lf x2:%lf y2:%lf\n", rec.prec, rec.wid, rec.x1, rec.y1, rec.x2, rec.y2);
-				//}		
-//end-debug
 
-				//根据密度阈值，调整区域 返回boolean, curMap, rec, reg 
-				structRefiner RF = Refiner(reg, rec, denThre, degMap, usedMap, RG.curMap, magMap);
-				reg = RF.reg;
-				rec = RF.rec;
+		//根据密度阈值，调整区域 返回boolean, curMap, rec, reg 
+		structRefiner RF = Refiner(reg, rec, denThre, degMap, usedMap, RG.curMap, magMap);
+		reg = RF.reg;
+		rec = RF.rec;
 #ifdef _disp_
-				//更新rec
-				mapDispBase.copyTo(mapDisp);
-				recSaveDisp[regCnt] = rec;
-				//imshow("mapDisp", mapDisp);
-				//waitKey(1);
+		//更新rec
+		mapDispBase.copyTo(mapDisp);
+		recSaveDisp[regCnt] = rec;
 #endif 
-//debug
-				//if (i == 507) {
-				//	ofstream Fsrf("E:/NUC/LSD/RC.xls");
-				//	int cnt_i, cnt_j;
-				//	for (cnt_i = 0; cnt_i < newMapRow; cnt_i++) {
-				//		for (cnt_j = 0; cnt_j < newMapCol; cnt_j++) {
-				//			Fsrf << (int)RF.curMap.ptr<uint8_t>(cnt_i)[cnt_j] << '\t';
-				//		}
-				//		Fsrf << endl;
-				//	}
-				//	Fsrf.close();
-				//	printf("reg--deg:%lf num:%d x:%d y:%d\n", reg.deg, reg.num, reg.x, reg.y);
-				//	for (cnt_i = 0; cnt_i < reg.num; cnt_i++) {
-				//		printf("%d %d %d\n", cnt_i, reg.regPts_x[cnt_i], reg.regPts_y[cnt_i]);
-				//	}
-				//	printf("rec--cX:%lf cY:%lf deg:%lf dx:%lf dy:%lf p:%lf ", rec.cX, rec.cY, rec.deg, rec.dx, rec.dy, rec.p);
-				//	printf("prec:%lf wid:%lf x1:%lf y1:%lf x2:%lf y2:%lf\n", rec.prec, rec.wid, rec.x1, rec.y1, rec.x2, rec.y2);
-				//
-				//	ofstream Fsdeg("E:/NUC/LSD/DEG.xls");
-				//	cnt_i, cnt_j;
-				//	for (cnt_i = 0; cnt_i < newMapRow; cnt_i++) {
-				//		for (cnt_j = 0; cnt_j < newMapCol; cnt_j++) {
-				//			Fsdeg << (double)degMap.ptr<double>(cnt_i)[cnt_j] << '\t';
-				//		}
-				//		Fsdeg << endl;
-				//	}
-				//	Fsdeg.close();
-				//}
-//end-debug
-				if (!RF.boolean)
-					continue;
-				//矩形调整 返回 logNFA, rec
-				structRectangleImprover RI = RectangleImprover(rec, degMap, logNT);
-				rec = RI.rec;
+		if (!RF.boolean)
+			continue;
+		//矩形调整 返回 logNFA, rec
+		structRectangleImprover RI = RectangleImprover(rec, degMap, logNT);
+		rec = RI.rec;
 #ifdef _disp_
-				//更新rec
-				mapDispBase.copyTo(mapDisp);
-				recSaveDisp[regCnt] = rec;
-				//imshow("mapDisp", mapDisp);
-				//waitKey(1);
+		//更新rec
+		mapDispBase.copyTo(mapDisp);
+		recSaveDisp[regCnt] = rec;
 #endif 
-				//printf("rec--cX:%lf cY:%lf deg:%lf dx:%lf dy:%lf p:%lf ", rec.cX, rec.cY, rec.deg, rec.dx, rec.dy, rec.p);
-				//printf("prec:%lf wid:%lf x1:%lf y1:%lf x2:%lf y2:%lf\n", rec.prec, rec.wid, rec.x1, rec.y1, rec.x2, rec.y2);
 
-				if (RI.logNFA <= 0){
-					for (y = 0; y < newMapRow; y++) {
-						for (x = 0; x < newMapCol; x++) {
-							if (RF.curMap.ptr<uint8_t>(y)[x] == 1)
-								usedMap.ptr<uint8_t>(y)[x] = 2;
-						}
-					}
+		if (RI.logNFA <= 0){
+			for (y = 0; y < newMapRow; y++) {
+				for (x = 0; x < newMapCol; x++) {
+					if (RF.curMap.ptr<uint8_t>(y)[x] == 1)
+						usedMap.ptr<uint8_t>(y)[x] = 2;
+				}
+			}
 #ifdef _disp_
-					//显示状态
-					mapDispBase.copyTo(mapDisp);
-					drawText("False Alarm", 350);
-					drawRecs();
-					imshow("mapDisp", mapDisp);
-					waitKey(800);
+			//显示状态
+			mapDispBase.copyTo(mapDisp);
+			drawText("False Alarm", 350);
+			drawRecs();
+			imshow("mapDisp", mapDisp);
+			waitKey(800);
 #endif 
-					continue;
-				}
-				//根据缩放尺度重新调整图像中所找到的直线信息
-				if (sca != 1){
-					rec.x1 = (rec.x1 - 1.0) / sca + 1;
-					rec.y1 = (rec.y1 - 1.0) / sca + 1;
-					rec.x2 = (rec.x2 - 1.0) / sca + 1;
-					rec.y2 = (rec.y2 - 1.0) / sca + 1;
-					rec.wid = (rec.wid - 1.0) / sca + 1;
-				}
-				//printf("rec--cX:%lf cY:%lf deg:%lf dx:%lf dy:%lf p:%lf ", rec.cX, rec.cY, rec.deg, rec.dx, rec.dy, rec.p);
-				//printf("prec:%lf wid:%lf x1:%lf y1:%lf x2:%lf y2:%lf\n", rec.prec, rec.wid, rec.x1, rec.y1, rec.x2, rec.y2);
-				for (y = 0; y < newMapRow; y++) {
-					for (x = 0; x < newMapCol; x++) {
-						regIdx.ptr<uint8_t>(y)[x] += RF.curMap.ptr<uint8_t>(y)[x] * (regCnt + 1);
-						if (RF.curMap.ptr<uint8_t>(y)[x] == 1)
-							usedMap.ptr<uint8_t>(y)[x] = 1;
-					}
-				}
-				//保存所找到的直线支持区域和拟合矩形
-#ifdef _disp_
-				//显示状态
-				mapDispBase.copyTo(mapDisp);
-				drawText("Save", 350);
-				drawRecs();
-				imshow("mapDisp", mapDisp);
-				waitKey(500);
-#endif 
-				regSave[regCnt] = reg;
-				recSave[regCnt] = rec;
-				regCnt++;
+			continue;
+		}
+		//根据缩放尺度重新调整图像中所找到的直线信息
+		if (sca != 1){
+			rec.x1 = (rec.x1 - 1.0) / sca + 1;
+			rec.y1 = (rec.y1 - 1.0) / sca + 1;
+			rec.x2 = (rec.x2 - 1.0) / sca + 1;
+			rec.y2 = (rec.y2 - 1.0) / sca + 1;
+			rec.wid = (rec.wid - 1.0) / sca + 1;
+		}
+		for (y = 0; y < newMapRow; y++) {
+			for (x = 0; x < newMapCol; x++) {
+				regIdx.ptr<uint8_t>(y)[x] += RF.curMap.ptr<uint8_t>(y)[x] * (regCnt + 1);
+				if (RF.curMap.ptr<uint8_t>(y)[x] == 1)
+					usedMap.ptr<uint8_t>(y)[x] = 1;
 			}
 		}
+#ifdef _disp_
+		//显示状态
+		mapDispBase.copyTo(mapDisp);
+		drawText("Save", 350);
+		drawRecs();
+		imshow("mapDisp", mapDisp);
+		waitKey(500);
+#endif 
+		//保存所找到的直线支持区域和拟合矩形
+		structRec *tempRec = (structRec*)malloc(sizeof(structRec));
+		recSaveNow[0] = rec;
+		recSaveNow[0].next = tempRec;
+		recSaveNow = tempRec;
+		regCnt++;
 	}
-	//调整保存所用胞元(去除)
+
+	//将recSave链表变成数组
+	recSaveNow = recSaveHead;
+	structRec *recSave = (structRec*)malloc(regCnt * sizeof(structRec));
+	for (i = 0; i < regCnt; i++) {
+		recSave[i] = recSaveNow[0];
+		recSaveNow = recSaveNow[0].next;
+	}
 
 	//将所提取到的直线按照像素点标记在图像矩阵中
 	structLinesInfo *linesInfo = (structLinesInfo*)malloc(regCnt * sizeof(structLinesInfo));
@@ -628,102 +491,80 @@ Mat GaussianSampler(Mat image, double sca, double sig) {
 	int prec = 3, xLim = image.cols, yLim = image.rows;
 	int newXLim = (int)floor(xLim * sca);
 	int newYLim = (int)floor(yLim * sca);
-	//printf("newXLim=%d newYLim=%d\n", newXLim, newYLim);
 	Mat auxImage = Mat::zeros(yLim, newXLim, CV_64FC1);
 	Mat newImage = Mat::zeros(newYLim, newXLim, CV_64FC1);
 	//如果是缩小图像则调整标准差的值
 	if (sca < 1)
 		sig = sig / sca;
-	//printf("%f\n", sig);
 	//高斯模板大小
 	int h = (int)ceil(sig * sqrt(2 * prec * log(10)));
 	int hSize = 1 + 2 * h;
 	int douXLim = xLim * 2;
 	int douYLim = yLim * 2;
-	//printf("h=%d hSize=%d douXLim=%d douYLim=%d\n", h, hSize, douXLim, douYLim);
+
+	//求高斯核
+	double kerSum1 = 0, kerSum2 = 0, kerSum3 = 0;
+	double *kerVal1 = (double*)malloc(hSize * sizeof(double));
+	double *kerVal2 = (double*)malloc(hSize * sizeof(double));
+	double *kerVal3 = (double*)malloc(hSize * sizeof(double));
+	int k = 0;
+	for (k = 0; k < hSize; k++) {
+		kerVal1[k] = exp(-0.5 * pow((k - h) / sig, 2));
+		kerVal2[k] = exp(-0.5 * pow((k - h - 1.0 / 3) / sig, 2));
+		kerVal3[k] = exp(-0.5 * pow((k - h + 1.0 / 3) / sig, 2));
+		kerSum1 += kerVal1[k];
+		kerSum2 += kerVal2[k];
+		kerSum3 += kerVal3[k];
+	}
+	//高斯核归一化
+	for (k = 0; k < hSize; k++) {
+		kerVal1[k] /= kerSum1;
+		kerVal2[k] /= kerSum2;
+		kerVal3[k] /= kerSum3;
+	}
 	//x方向采样
 	int x;
 	for (x = 0; x < newXLim; x++) {
-		//if (x == 1)
-		//	printf("x=%d\n", x);
-		double xx = x / sca;
-		int xc = (int)floor(xx + 0.5);
-		//if (x == 1)
-		//	printf("xx=%f xc=%d\n", xx, xc);
-		//确定高斯核中心位置
-		double kerMean = h + xx - xc;
-		double *kerVal = (double*)malloc(hSize * sizeof(double));
-		double kerSum = 0;
-		int k = 0;
-		//if (x == 1)
-		//	printf("kerMean=%lf\n", kerMean);
-		//求当前高斯核（疑似有规律可循 不需反复计算 后面再优化）
-		for (k = 0; k < hSize; k++) {
-			kerVal[k] = (double)exp((-0.5) * pow((k - kerMean) / sig, 2));
-			kerSum += kerVal[k];
-			//if (x == 1)
-			//	printf("k=%d kerVal[%d]=%lf kerSum=%lf\n", k, k, kerVal[k], kerSum);
-		}
-		//高斯核归一化
-		for (k = 0; k < hSize; k++) {
-			kerVal[k] /= kerSum;
-			//if (x == 0)
-			//	printf("k=%d kerval[%d]=%lf\n", k, k, kerVal[k]);
-		}
+		double *kerVal;
+		if (x % 3 == 0)
+			kerVal = kerVal1;
+		else if (x % 3 == 1)
+			kerVal = kerVal2;
+		else
+			kerVal = kerVal3;
+		int xc = (int)floor(x / sca + 0.5);
 		//用边缘对称的方式进行X坐标高斯滤波
 		int y;
-		for (y = 0; y < yLim; y++){
+		for (y = 0; y < yLim; y++) {
 			double newVal = 0;
 			int i;
-			structPixelCache *pixelCache = (structPixelCache*)malloc(hSize * sizeof(structPixelCache));
 			for (i = 0; i < hSize; i++) {
-			}
-		
-			for (i = 0; i < hSize; i++){
 				int j = xc - h + i;
-				//if (x == 0 && y > 80 && y < 90)
-				//	printf("y=%d i=%d j1=%d ", y, i, j);
 				while (j < 0) {
 					j += douXLim;
 				}
 				while (j >= douXLim) {
 					j -= douXLim;
 				}
-				//if (x == 0 && y > 80 && y < 90)
-				//	printf("j2=%d ", j);
 				if (j >= xLim)
 					j = douXLim - j - 1;
-				//if (x == 0 && y > 80 && y < 90) {
-				//	printf("j3=%d ", j);
-				//	printf("img=%d\n", image.ptr<uint8_t>(y)[j]);
-				//}
 				newVal += image.ptr<uint8_t>(y)[j] * kerVal[i];
 			}
-			auxImage.ptr<double>(y)[x] = round(newVal);
+			auxImage.ptr<double>(y)[x] = newVal;
 		}
-		//if (x < 10)
-		//	printf("\n");
 	}//end for（x方向采样）
 
 	//y方向采样
 	int y;
 	for (y = 0; y < newYLim; y++) {
-		double yy = y / sca;
-		int yc = (int)floor(yy + 0.5);
-		//确定高斯核中心位置
-		double kerMean = h + yy - yc;
-		double *kerVal = (double*)malloc(hSize * sizeof(double));
-		double kerSum = 0;
-		int k = 0;
-		//求当前高斯核
-		for (k = 0; k < hSize; k++) {
-			kerVal[k] = (double)exp((-0.5) * pow((k - kerMean) / sig, 2));
-			kerSum += kerVal[k];
-		}
-		//高斯核归一化
-		for (k = 0; k < hSize; k++) {
-			kerVal[k] /= kerSum;
-		}
+		double *kerVal;
+		if (y % 3 == 0)
+			kerVal = kerVal1;
+		else if (y % 3 == 1)
+			kerVal = kerVal2;
+		else
+			kerVal = kerVal3;
+		int yc = (int)floor(y / sca + 0.5);
 		//用边缘对称的方式进行Y坐标高斯滤波
 		int x;
 		for (x = 0; x < newXLim; x++)
@@ -746,15 +587,6 @@ Mat GaussianSampler(Mat image, double sca, double sig) {
 			newImage.ptr<double>(y)[x] = newVal;
 		}
 	}//end for（y方向采样）
-	//ofstream Fs("E:/NUC/LSD/1.xls");
-	//int i, j;
-	//for (i = 0; i < newYLim; i++) {
-	//	for (j = 0; j < newXLim; j++) {
-	//		Fs << (double)newImage.ptr<double>(i)[j] << '\t';
-	//	}
-	//	Fs << endl;
-	//}
-	//Fs.close();
 	return newImage;
 }
 
