@@ -12,6 +12,7 @@ const double pi = 4.0 * atan(1.0);
 const int MAXLEN = 10000;
 double sca = 0.3, sig = 0.6, angThre = 22.5, denThre = 0.7;
 int pseBin = 1024, regCnt = 0;
+int valBinCell = 0;
 #ifdef _disp_
 Mat mapDispBase = Mat::zeros(600, 1239, CV_64FC3);//384*1239
 Mat mapDisp = Mat::zeros(600, 1239, CV_64FC3);
@@ -284,6 +285,7 @@ void main() {
 	int i = 0;
 	cnt_binCell = 0;
 	for (i = 0; i < len_binCell; i++) {
+		valBinCell = binCell[i].value;
 		if (binCell[i].value < 500)
 			break;
 		int yIdx = binCell[i].y;
@@ -680,8 +682,10 @@ structRegionGrower RegionGrower(int x, int y, Mat banMap, double regDeg, Mat deg
 					drawDeg(degMap, curMap, banMap, n, m, cenDegX, cenDegY, regDegX, regDegY);
 					drawText("RegionGrowing", 350);
 					drawRecs();
-					string text_growNum = "Num of Region: " + to_string(growNum);
+					string text_growNum = "Rank of Gradient: " + to_string(valBinCell);
 					drawText2(text_growNum, 530, 410);
+					text_growNum = "Num of Region: " + to_string(growNum);
+					drawText2(text_growNum, 530, 440);
 #endif 
 					if (curMap.ptr<uint8_t>(m)[n] != 1 && banMap.ptr<uint8_t>(m)[n] != 1){
 #ifdef _disp_
