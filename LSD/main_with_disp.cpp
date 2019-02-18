@@ -286,7 +286,7 @@ void main() {
 	cnt_binCell = 0;
 	for (i = 0; i < len_binCell; i++) {
 		valBinCell = binCell[i].value;
-		if (binCell[i].value < 500)
+		if (binCell[i].value < 100)
 			break;
 		int yIdx = binCell[i].y;
 		int xIdx = binCell[i].x;
@@ -345,7 +345,7 @@ void main() {
 			drawText("False Alarm", 350);
 			drawRecs();
 			imshow("mapDisp", mapDisp);
-			waitKey(800);
+			waitKey(1000);
 #endif 
 			continue;
 		}
@@ -371,7 +371,7 @@ void main() {
 		drawText("Save", 350);
 		drawRecs();
 		imshow("mapDisp", mapDisp);
-		waitKey(500);
+		waitKey(800);
 #endif 
 		//保存所找到的直线支持区域和拟合矩形
 		structRec *tempRec = (structRec*)malloc(sizeof(structRec));
@@ -524,8 +524,8 @@ Mat GaussianSampler(Mat image, double sca, double sig) {
 	int k = 0;
 	for (k = 0; k < hSize; k++) {
 		kerVal1[k] = exp(-0.5 * pow((k - h) / sig, 2));
-		kerVal2[k] = exp(-0.5 * pow((k - h - 1.0 / 3) / sig, 2));
-		kerVal3[k] = exp(-0.5 * pow((k - h + 1.0 / 3) / sig, 2));
+		kerVal2[k] = exp(-0.5 * pow((k - h - 1.0 / 3.0) / sig, 2));
+		kerVal3[k] = exp(-0.5 * pow((k - h + 1.0 / 3.0) / sig, 2));
 		kerSum1 += kerVal1[k];
 		kerSum2 += kerVal2[k];
 		kerSum3 += kerVal3[k];
@@ -676,24 +676,23 @@ structRegionGrower RegionGrower(int x, int y, Mat banMap, double regDeg, Mat deg
 				//检查像素值的状态
 				if (m >= 0 && n >= 0 && m < yLim && n < xLim) {
 #ifdef _disp_
-					mapDispBK.copyTo(mapDisp);
-					drawPoint(mapDisp, n, m, 0, 0, 255);//红色
-					//drawDegPoint(n, m, degX, degY);
-					drawDeg(degMap, curMap, banMap, n, m, cenDegX, cenDegY, regDegX, regDegY);
-					drawText("RegionGrowing", 350);
-					drawRecs();
-					string text_growNum = "Rank of Gradient: " + to_string(valBinCell);
-					drawText2(text_growNum, 530, 410);
-					text_growNum = "Num of Region: " + to_string(growNum);
-					drawText2(text_growNum, 530, 440);
+					//mapDispBK.copyTo(mapDisp);
+					//drawPoint(mapDisp, n, m, 0, 0, 255);//红色
+					//drawDeg(degMap, curMap, banMap, n, m, cenDegX, cenDegY, regDegX, regDegY);
+					//drawText("RegionGrowing", 350);
+					//drawRecs();
+					//string text_growNum = "Rank of Gradient: " + to_string(valBinCell);
+					//drawText2(text_growNum, 530, 410);
+					//text_growNum = "Num of Region: " + to_string(growNum);
+					//drawText2(text_growNum, 530, 440);
 #endif 
 					if (curMap.ptr<uint8_t>(m)[n] != 1 && banMap.ptr<uint8_t>(m)[n] != 1){
 #ifdef _disp_
-						drawPoint(mapDisp, n, m, 0, 252, 124); //绿色
-						drawText("RegionGrowing", 350);
-						drawRecs();
-						imshow("mapDisp", mapDisp);
-						waitKey(1);
+						//drawPoint(mapDisp, n, m, 0, 252, 124); //绿色
+						//drawText("RegionGrowing", 350);
+						//drawRecs();
+						//imshow("mapDisp", mapDisp);
+						//waitKey(1);
 #endif 
 						//检查是当前弧度满足阈值 或是 当前弧度减pi满足阈值
 						double curDeg = degMap.ptr<double>(m)[n];
@@ -724,8 +723,8 @@ structRegionGrower RegionGrower(int x, int y, Mat banMap, double regDeg, Mat deg
 						}
 					}
 					else {
-						imshow("mapDisp", mapDisp);
-						waitKey(1);
+						//imshow("mapDisp", mapDisp);
+						//waitKey(1);
 					}
 				}
 			}
@@ -933,12 +932,12 @@ structRec RectangleConverter(structReg reg, Mat magMap, double aliPro, double de
 #endif
 		}
 #ifdef _disp_
-		imshow("mapDisp", mapDisp);
-		waitKey(1);
+		//imshow("mapDisp", mapDisp);
+		//waitKey(1);
 #endif
 	}
 #ifdef _disp_
-	waitKey(1000);
+	//waitKey(1000);
 #endif
 	//保存矩形信息到结构体
 	structRec rec;
@@ -1381,6 +1380,10 @@ structRectangleImprover RectangleImprover(structRec rec, Mat degMap, double logN
 	//如果虚警数小于1(负对数大于0，Desolneux建议值)则满足精度
 	if (RI.logNFA > 0)
 		return RI;
+#ifdef _disp_
+	Mat mapDispBK = Mat::zeros(384, 1239, CV_64FC3);
+	mapDisp.copyTo(mapDispBK);
+#endif
 	//尝试改善精度 (角度容忍度)
 	structRec recNew = RI.rec;
 	int i;
@@ -1389,6 +1392,39 @@ structRectangleImprover RectangleImprover(structRec rec, Mat degMap, double logN
 		recNew.p /= 2.0;
 		recNew.prec = recNew.p * pi;
 		logNFANew = RectangleNFACalculator(recNew, degMap, logNT);
+#ifdef _disp_
+		double verX[4], verY[4];
+		structRec rec = recNew;
+		verX[0] = (rec.x1 - rec.dy * rec.wid / 2.0) * 3;
+		verX[1] = (rec.x2 - rec.dy * rec.wid / 2.0) * 3;
+		verX[2] = (rec.x2 + rec.dy * rec.wid / 2.0) * 3;
+		verX[3] = (rec.x1 + rec.dy * rec.wid / 2.0) * 3;
+		verY[0] = (rec.y1 + rec.dx * rec.wid / 2.0) * 3;
+		verY[1] = (rec.y2 + rec.dx * rec.wid / 2.0) * 3;
+		verY[2] = (rec.y2 - rec.dx * rec.wid / 2.0) * 3;
+		verY[3] = (rec.y1 - rec.dx * rec.wid / 2.0) * 3;
+		line(mapDisp, Point(verX[0], verY[0]), Point(verX[1], verY[1]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
+		line(mapDisp, Point(verX[1], verY[1]), Point(verX[2], verY[2]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
+		line(mapDisp, Point(verX[2], verY[2]), Point(verX[3], verY[3]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
+		line(mapDisp, Point(verX[3], verY[3]), Point(verX[0], verY[0]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
+		drawText("RectangleImprover", 350);
+		drawSign(mapDisp, rec.cX, rec.cY, 122, 25, 25);
+		drawRecs();
+		string text_RI = "Reduce P: " + to_string(recNew.p);
+		drawText2(text_RI, 530, 410);
+		text_RI = "NFANew: " + to_string(logNFANew);
+		drawText2(text_RI, 530, 440);
+		text_RI = "NFA: " + to_string(RI.logNFA);
+		drawText2(text_RI, 530, 470);
+		if (logNFANew > RI.logNFA)
+			text_RI = "Accept";
+		else
+			text_RI = "Deny";
+		drawText2(text_RI, 530, 500);
+		imshow("mapDisp", mapDisp);
+		waitKey(1000);
+		mapDispBK.copyTo(mapDisp);
+#endif
 		if (logNFANew > RI.logNFA){
 			RI.logNFA = logNFANew;
 			RI.rec = recNew;
@@ -1396,6 +1432,7 @@ structRectangleImprover RectangleImprover(structRec rec, Mat degMap, double logN
 	}
 	if (RI.logNFA > 0)
 		return RI;
+
 	//尝试减少宽度
 	recNew = RI.rec;
 	for (i =0; i < 5; i++){
@@ -1403,6 +1440,39 @@ structRectangleImprover RectangleImprover(structRec rec, Mat degMap, double logN
 		if (recNew.wid - delt >= 0.5){
 			recNew.wid -= delt;
 			logNFANew = RectangleNFACalculator(recNew, degMap, logNT);
+#ifdef _disp_
+			double verX[4], verY[4];
+			structRec rec = recNew;
+			verX[0] = (rec.x1 - rec.dy * rec.wid / 2.0) * 3;
+			verX[1] = (rec.x2 - rec.dy * rec.wid / 2.0) * 3;
+			verX[2] = (rec.x2 + rec.dy * rec.wid / 2.0) * 3;
+			verX[3] = (rec.x1 + rec.dy * rec.wid / 2.0) * 3;
+			verY[0] = (rec.y1 + rec.dx * rec.wid / 2.0) * 3;
+			verY[1] = (rec.y2 + rec.dx * rec.wid / 2.0) * 3;
+			verY[2] = (rec.y2 - rec.dx * rec.wid / 2.0) * 3;
+			verY[3] = (rec.y1 - rec.dx * rec.wid / 2.0) * 3;
+			line(mapDisp, Point(verX[0], verY[0]), Point(verX[1], verY[1]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
+			line(mapDisp, Point(verX[1], verY[1]), Point(verX[2], verY[2]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
+			line(mapDisp, Point(verX[2], verY[2]), Point(verX[3], verY[3]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
+			line(mapDisp, Point(verX[3], verY[3]), Point(verX[0], verY[0]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
+			drawText("RectangleImprover", 350);
+			drawSign(mapDisp, rec.cX, rec.cY, 122, 25, 25);
+			drawRecs();
+			string text_RI = "Reduce Width: " + to_string(recNew.wid);
+			drawText2(text_RI, 530, 410);
+			text_RI = "NFANew: " + to_string(logNFANew);
+			drawText2(text_RI, 530, 440);
+			text_RI = "NFA: " + to_string(RI.logNFA);
+			drawText2(text_RI, 530, 470);
+			if (logNFANew > RI.logNFA)
+				text_RI = "Accept";
+			else
+				text_RI = "Deny";
+			drawText2(text_RI, 530, 500);
+			imshow("mapDisp", mapDisp);
+			waitKey(1000);
+			mapDispBK.copyTo(mapDisp);
+#endif
 			if (logNFANew > RI.logNFA){
 				RI.logNFA = logNFANew;
 				RI.rec = recNew;
@@ -1411,10 +1481,7 @@ structRectangleImprover RectangleImprover(structRec rec, Mat degMap, double logN
 	}
 	if (RI.logNFA > 0)
 		return RI;
-#ifdef _disp_
-	Mat mapDispBK = Mat::zeros(384, 1239, CV_64FC3);
-	mapDisp.copyTo(mapDispBK);
-#endif
+
 	//尝试减少矩形的一侧
 	recNew = RI.rec;
 	for (i = 0; i < 5; i++){
@@ -1423,18 +1490,41 @@ structRectangleImprover RectangleImprover(structRec rec, Mat degMap, double logN
 			recNew.y1 += recNew.dx * delt2;
 			recNew.x2 -= recNew.dy * delt2;
 			recNew.y2 += recNew.dx * delt2;
+			recNew.wid -= delt;
+			logNFANew = RectangleNFACalculator(recNew, degMap, logNT);
 #ifdef _disp_
-			rectangle(mapDisp, Point(recNew.x1 * 3 + 1, recNew.y1 * 3 + 1), \
-				Point(recNew.x2 * 3 + 1, recNew.y2 * 3 + 1), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1);
+			double verX[4], verY[4];
+			structRec rec = recNew;
+			verX[0] = (rec.x1 - rec.dy * rec.wid / 2.0) * 3;
+			verX[1] = (rec.x2 - rec.dy * rec.wid / 2.0) * 3;
+			verX[2] = (rec.x2 + rec.dy * rec.wid / 2.0) * 3;
+			verX[3] = (rec.x1 + rec.dy * rec.wid / 2.0) * 3;
+			verY[0] = (rec.y1 + rec.dx * rec.wid / 2.0) * 3;
+			verY[1] = (rec.y2 + rec.dx * rec.wid / 2.0) * 3;
+			verY[2] = (rec.y2 - rec.dx * rec.wid / 2.0) * 3;
+			verY[3] = (rec.y1 - rec.dx * rec.wid / 2.0) * 3;
+			line(mapDisp, Point(verX[0], verY[0]), Point(verX[1], verY[1]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
+			line(mapDisp, Point(verX[1], verY[1]), Point(verX[2], verY[2]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
+			line(mapDisp, Point(verX[2], verY[2]), Point(verX[3], verY[3]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
+			line(mapDisp, Point(verX[3], verY[3]), Point(verX[0], verY[0]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
 			drawText("RectangleImprover", 350);
 			drawSign(mapDisp, rec.cX, rec.cY, 122, 25, 25);
 			drawRecs();
+			string text_RI = "Reduce Width: " + to_string(recNew.wid) + "& Move Rec";
+			drawText2(text_RI, 530, 410);
+			text_RI = "NFANew: " + to_string(logNFANew);
+			drawText2(text_RI, 530, 440);
+			text_RI = "NFA: " + to_string(RI.logNFA);
+			drawText2(text_RI, 530, 470);
+			if (logNFANew > RI.logNFA)
+				text_RI = "Accept";
+			else
+				text_RI = "Deny";
+			drawText2(text_RI, 530, 500);
 			imshow("mapDisp", mapDisp);
 			waitKey(1000);
 			mapDispBK.copyTo(mapDisp);
 #endif
-			recNew.wid -= delt;
-			logNFANew = RectangleNFACalculator(recNew, degMap, logNT);
 			if (logNFANew > RI.logNFA){
 				RI.logNFA = logNFANew;
 				RI.rec = recNew;
@@ -1451,18 +1541,41 @@ structRectangleImprover RectangleImprover(structRec rec, Mat degMap, double logN
 			recNew.y1 -= recNew.dx * delt2;
 			recNew.x2 += recNew.dy * delt2;
 			recNew.y2 -= recNew.dx * delt2;
+			recNew.wid -= delt;
+			logNFANew = RectangleNFACalculator(recNew, degMap, logNT);
 #ifdef _disp_
-			rectangle(mapDisp, Point(recNew.x1 * 3 + 1, recNew.y1 * 3 + 1), \
-				Point(recNew.x2 * 3 + 1, recNew.y2 * 3 + 1), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1);
+			double verX[4], verY[4];
+			structRec rec = recNew;
+			verX[0] = (rec.x1 - rec.dy * rec.wid / 2.0) * 3;
+			verX[1] = (rec.x2 - rec.dy * rec.wid / 2.0) * 3;
+			verX[2] = (rec.x2 + rec.dy * rec.wid / 2.0) * 3;
+			verX[3] = (rec.x1 + rec.dy * rec.wid / 2.0) * 3;
+			verY[0] = (rec.y1 + rec.dx * rec.wid / 2.0) * 3;
+			verY[1] = (rec.y2 + rec.dx * rec.wid / 2.0) * 3;
+			verY[2] = (rec.y2 - rec.dx * rec.wid / 2.0) * 3;
+			verY[3] = (rec.y1 - rec.dx * rec.wid / 2.0) * 3;
+			line(mapDisp, Point(verX[0], verY[0]), Point(verX[1], verY[1]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
+			line(mapDisp, Point(verX[1], verY[1]), Point(verX[2], verY[2]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
+			line(mapDisp, Point(verX[2], verY[2]), Point(verX[3], verY[3]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
+			line(mapDisp, Point(verX[3], verY[3]), Point(verX[0], verY[0]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
 			drawText("RectangleImprover", 350);
 			drawSign(mapDisp, rec.cX, rec.cY, 122, 25, 25);
 			drawRecs();
+			string text_RI = "Reduce Width: " + to_string(recNew.wid) + "& Move Rec";
+			drawText2(text_RI, 530, 410);
+			text_RI = "NFANew: " + to_string(logNFANew);
+			drawText2(text_RI, 530, 440);
+			text_RI = "NFA: " + to_string(RI.logNFA);
+			drawText2(text_RI, 530, 470);
+			if (logNFANew > RI.logNFA)
+				text_RI = "Accept";
+			else
+				text_RI = "Deny";
+			drawText2(text_RI, 530, 500);
 			imshow("mapDisp", mapDisp);
 			waitKey(1000);
 			mapDispBK.copyTo(mapDisp);
 #endif
-			recNew.wid -= delt;
-			logNFANew = RectangleNFACalculator(recNew, degMap, logNT);
 			if (logNFANew > RI.logNFA){
 				RI.logNFA = logNFANew;
 				RI.rec = recNew;
@@ -1477,6 +1590,39 @@ structRectangleImprover RectangleImprover(structRec rec, Mat degMap, double logN
 		recNew.p /= 2.0;
 		recNew.prec = recNew.p * pi;
 		logNFANew = RectangleNFACalculator(recNew, degMap, logNT);
+#ifdef _disp_
+		double verX[4], verY[4];
+		structRec rec = recNew;
+		verX[0] = (rec.x1 - rec.dy * rec.wid / 2.0) * 3;
+		verX[1] = (rec.x2 - rec.dy * rec.wid / 2.0) * 3;
+		verX[2] = (rec.x2 + rec.dy * rec.wid / 2.0) * 3;
+		verX[3] = (rec.x1 + rec.dy * rec.wid / 2.0) * 3;
+		verY[0] = (rec.y1 + rec.dx * rec.wid / 2.0) * 3;
+		verY[1] = (rec.y2 + rec.dx * rec.wid / 2.0) * 3;
+		verY[2] = (rec.y2 - rec.dx * rec.wid / 2.0) * 3;
+		verY[3] = (rec.y1 - rec.dx * rec.wid / 2.0) * 3;
+		line(mapDisp, Point(verX[0], verY[0]), Point(verX[1], verY[1]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
+		line(mapDisp, Point(verX[1], verY[1]), Point(verX[2], verY[2]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
+		line(mapDisp, Point(verX[2], verY[2]), Point(verX[3], verY[3]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
+		line(mapDisp, Point(verX[3], verY[3]), Point(verX[0], verY[0]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
+		drawText("RectangleImprover", 350);
+		drawSign(mapDisp, rec.cX, rec.cY, 122, 25, 25);
+		drawRecs();
+		string text_RI = "Reduce P: " + to_string(recNew.p);
+		drawText2(text_RI, 530, 410);
+		text_RI = "NFANew: " + to_string(logNFANew);
+		drawText2(text_RI, 530, 440);
+		text_RI = "NFA: " + to_string(RI.logNFA);
+		drawText2(text_RI, 530, 470);
+		if (logNFANew > RI.logNFA)
+			text_RI = "Accept";
+		else
+			text_RI = "Deny";
+		drawText2(text_RI, 530, 500);
+		imshow("mapDisp", mapDisp);
+		waitKey(1000);
+		mapDispBK.copyTo(mapDisp);
+#endif
 		if (logNFANew > RI.logNFA){
 			RI.logNFA = logNFANew;
 			RI.rec = recNew;
@@ -1566,24 +1712,20 @@ void drawRecs() {
 	int xLeft, xRight, yDown, yUp;
 	int cnt_rec;
 	for (cnt_rec = 0; cnt_rec <= regCnt - 1; cnt_rec++) {
-		if (recSaveDisp[cnt_rec].x1 < recSaveDisp[cnt_rec].x2) {
-			xLeft = (int)round(recSaveDisp[cnt_rec].x1);
-			xRight = (int)round(recSaveDisp[cnt_rec].x2);
-		}
-		else {
-			xLeft = (int)round(recSaveDisp[cnt_rec].x2);
-			xRight = (int)round(recSaveDisp[cnt_rec].x1);
-		}
-		if (recSaveDisp[cnt_rec].y1 < recSaveDisp[cnt_rec].y2) {
-			yUp = (int)round(recSaveDisp[cnt_rec].y1);
-			yDown = (int)round(recSaveDisp[cnt_rec].y2);
-		}
-		else {
-			yUp = (int)round(recSaveDisp[cnt_rec].y2);
-			yDown = (int)round(recSaveDisp[cnt_rec].y1);
-		}
-		rectangle(mapDisp, Point(xLeft * 3 - 1, yUp * 3 - 1), Point(xRight * 3 + 1, yDown * 3 + 1), \
-			Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1);
+		double verX[4], verY[4];
+		structRec rec = recSaveDisp[cnt_rec];
+		verX[0] = (rec.x1 - rec.dy * rec.wid / 2.0) * 3;
+		verX[1] = (rec.x2 - rec.dy * rec.wid / 2.0) * 3;
+		verX[2] = (rec.x2 + rec.dy * rec.wid / 2.0) * 3;
+		verX[3] = (rec.x1 + rec.dy * rec.wid / 2.0) * 3;
+		verY[0] = (rec.y1 + rec.dx * rec.wid / 2.0) * 3;
+		verY[1] = (rec.y2 + rec.dx * rec.wid / 2.0) * 3;
+		verY[2] = (rec.y2 - rec.dx * rec.wid / 2.0) * 3;
+		verY[3] = (rec.y1 - rec.dx * rec.wid / 2.0) * 3;
+		line(mapDisp, Point(verX[0], verY[0]), Point(verX[1], verY[1]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
+		line(mapDisp, Point(verX[1], verY[1]), Point(verX[2], verY[2]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
+		line(mapDisp, Point(verX[2], verY[2]), Point(verX[3], verY[3]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
+		line(mapDisp, Point(verX[3], verY[3]), Point(verX[0], verY[0]), Scalar(122 / 255.0, 25 / 255.0, 25 / 255.0), 1, LINE_AA);
 	}
 }
 
