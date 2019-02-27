@@ -8,9 +8,7 @@ using namespace cv;
 using namespace std;
 
 const double pi = 4.0 * atan(1.0);
-const int MAXLEN = 10000;
-double sca = 0.3, sig = 0.6, angThre = 22.5, denThre = 0.7;
-int pseBin = 1024, regCnt = 0;
+int regCnt = 0;
 
 typedef struct _nodeBinCell {
 	int value;
@@ -97,9 +95,15 @@ typedef struct _structLinesInfo {
 	int orient;
 } structLinesInfo;
 
+typedef struct _structLSD {
+	Mat lineIm;
+	structLinesInfo *linesInfo;
+} structLSD;
+
 structRec *recSaveDisp;
 
 int Comp(const void *p1, const void *p2);
+structLSD myLineSegmentDetector(Mat MapGray, int oriMapCol, int oriMapRow, double sca, double sig, double angThre, double denThre, double pseBin);
 Mat GaussianSampler(Mat image, double sca, double sig);
 structRegionGrower RegionGrower(int x, int y, Mat banMap, double regDeg, Mat degMap, double degThre);
 structRec RectangleConverter(structReg reg, Mat magMap, double aliPro, double degThre);
@@ -113,17 +117,16 @@ double sind(double x);
 double cosd(double x);
 double atand(double x);
 
-
 int main() {
 	clock_t time_start, time_end;
 	time_start = clock();
-	FILE *fp = fopen("E:/NUC/LSD/mapParam.txt", "r");
+	FILE *fp = fopen("../mapParam.txt", "r");
 	int oriMapCol, oriMapRow;
 	fscanf(fp, "%d%d", &oriMapCol, &oriMapRow);
 	fclose(fp);
 
 	int cnt_row, cnt_col;
-	fp = fopen("E:/NUC/LSD/data255.txt", "r");
+	fp = fopen("../data255.txt", "r");
 	Mat MapGray = Mat::zeros(oriMapRow, oriMapCol, CV_8UC1);
 
 	int max = 0;
@@ -136,6 +139,16 @@ int main() {
 	}
 	fclose(fp);
 
+	structLSD LSD = myLineSegmentDetector(MapGray, oriMapCol, oriMapRow, 0.3, 0.6, 22.5, 0.7, 1024);
+
+	//imshow("MapGray", MapGray);
+	time_end = clock();
+	printf("time = %lf\n", (double)(time_end - time_start) / CLOCKS_PER_SEC);
+	imshow("lineIm", LSD.lineIm);
+	waitKey(0);
+}
+
+structLSD myLineSegmentDetector(Mat MapGray, int oriMapCol, int oriMapRow, double sca, double sig, double angThre, double denThre, double pseBin) {
 	//图像缩放—— 高斯降采样
 	int newMapCol = (int)floor(oriMapCol * sca);
 	int newMapRow = (int)floor(oriMapRow * sca);
@@ -173,7 +186,7 @@ int main() {
 		}
 	}
 
-   //储存梯度值到数组
+	//储存梯度值到数组
 	int len_binCell = 0;
 	Mat pseIdx = Mat::zeros(newMapRow, newMapCol, CV_16UC1);
 	double zoom = 1.0 * pseBin / maxGrad;
@@ -364,13 +377,10 @@ int main() {
 		linesInfo[i].len = sqrt(pow(y2 - y1, 2) + pow(x2 - x1, 2));
 		linesInfo[i].orient = orient;
 	}
-
-	//imshow("MapGray", MapGray);
-	//imshow("GaussImage", GaussImage);
-	time_end = clock();
-	printf("time = %lf\n", (double)(time_end - time_start) / CLOCKS_PER_SEC);
-	imshow("lineIm", lineIm);
-	waitKey(0);
+	structLSD returnLSD;
+	returnLSD.lineIm = lineIm;
+	returnLSD.linesInfo = linesInfo;
+	return returnLSD;
 }
 
 Mat GaussianSampler(Mat image, double sca, double sig) {
