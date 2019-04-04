@@ -14,3 +14,5 @@ V1.2 完成了Degree图的动画（在main_with_disp里面），修正了UsedMap
 V1.3 新增了基于Ramer-Douglas-Peucker算法的激光雷达点云分割代码
 
 V2.0 提取出了LSD和RDP算法到单独文件并可独立调用，新增Base_Func实现共用的函数和结构体，并记录主体结构的变化，引入FeatureAssociation算法，实现RDP的数据在LSD中的匹配的算法，新增数据转换函数，增加RDP注释量，调整文件结构，删除main_with_disp函数及相关生成文件
+
+V2.1 在myLSD中增加了mapCache的计算，用于特征匹配的先验概率，修正了LSD计算时的原始图像，清除了地图中间值为255的部分
