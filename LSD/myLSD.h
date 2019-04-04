@@ -4,7 +4,7 @@
 //博客 http://www.cnblogs.com/Pyrokine/
 //Github https://github.com/Pyrokine
 //创建日期 20190126
-//版本 2.0
+//版本 2.1
 //**********************************************************************
 //V1.0
 //实现了LineSegmentDetector的基本算法， 并添加了基础的可视化演示
@@ -22,6 +22,9 @@
 //
 //V2.0
 //提取出LSD算法到单独文件，可以单独引用，增加命名空间mylsd
+//
+//V2.1
+//计算出FeatureAssociation需要的mapCache，用于表示先验概率
 /////////////////////////////////////////////////////////////////////////
 
 
@@ -48,6 +51,14 @@ namespace mylsd {
 		int y;
 		struct _structPts *next;
 	}structPts;
+
+	typedef struct _structCache {
+		int src_i;
+		int src_j;
+		int cur_i;
+		int cur_j;
+		struct _structCache *next;
+	}structCache;
 
 	typedef struct _structReg {
 		int x;
@@ -117,6 +128,7 @@ namespace mylsd {
 
 	int Comp(const void *p1, const void *p2);
 
+	Mat createMapCache(Mat MapGray, double res, double z_occ_max_dis);
 	structLSD myLineSegmentDetector(Mat MapGray, int oriMapCol, int oriMapRow, double sca, double sig, double angThre, double denThre, double pseBin);
 	Mat GaussianSampler(Mat image, double sca, double sig);
 	structRegionGrower RegionGrower(int x, int y, Mat banMap, double regDeg, Mat degMap, double degThre);

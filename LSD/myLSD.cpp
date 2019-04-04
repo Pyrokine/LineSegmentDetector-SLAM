@@ -2,16 +2,143 @@
 
 using namespace cv;
 using namespace std;
+
 namespace mylsd {
 	//LineSegmentDetector
 	structRec *recSaveDisp;
 	const double pi = 4.0 * atan(1.0);
 	int regCnt = 0;
 
+	Mat createMapCache(Mat MapGray, double res, double z_occ_max_dis) {
+		//计算图中点到最近点的最小距离，在特征匹配时用作先验概率
+		int cell_radius = floor(z_occ_max_dis / res);
+		int height = MapGray.rows, width = MapGray.cols;
+		Mat mapCache = Mat::zeros(height, width, CV_64FC1);
+		Mat mapFlag = Mat::zeros(height, width, CV_64FC1);
+
+		structCache *head = (structCache*)malloc(sizeof(structCache));
+		structCache *now = head, *tail;
+		
+		int i, j;
+		for (i = 0; i < height; i++) {
+			for (j = 0; j < width; j++) {
+				if (MapGray.ptr<uint8_t>(i)[j] == 1) {
+					structCache *temp = (structCache*)malloc(sizeof(structCache));
+					temp->next = NULL;
+					now->src_i = i;
+					now->src_j = j;
+					now->cur_i = i;
+					now->cur_j = j;
+					now->next = temp;
+					now = temp;
+					mapCache.ptr<double>(i)[j] = 0;
+					mapFlag.ptr<double>(i)[j] = 1;
+				}
+				else {
+					mapCache.ptr<double>(i)[j] = 2;
+				}
+			}
+		}
+
+		tail = now;
+		now = head;
+		while (now->next != NULL) {
+			int src_i = now->src_i, src_j = now->src_j;
+			int cur_i = now->cur_i, cur_j = now->cur_j;
+			
+			if (cur_i >= 1 && mapFlag.ptr<double>(cur_i - 1)[cur_j] == 0) {
+				double di = abs(cur_i - src_i);
+				double dj = abs(cur_j - src_j);
+				double distance = sqrt(di * di + dj * dj);
+
+				if (distance <= cell_radius) {
+					mapCache.ptr<double>(cur_i - 1)[cur_j] = distance * res;
+					mapFlag.ptr<double>(cur_i - 1)[cur_j] = 1;
+					structCache *temp = (structCache*)malloc(sizeof(structCache));
+					temp->next = NULL;
+					tail->src_i = src_i;
+					tail->src_j = src_j;
+					tail->cur_i = cur_i - 1;
+					tail->cur_j = cur_j;
+					tail->next = temp;
+					tail = temp;
+				}
+			}
+
+			if (cur_j >= 1 && mapFlag.ptr<double>(cur_i)[cur_j - 1] == 0) {
+				double di = abs(cur_i - src_i);
+				double dj = abs(cur_j - src_j);
+				double distance = sqrt(di * di + dj * dj);
+
+				if (distance <= cell_radius) {
+					mapCache.ptr<double>(cur_i)[cur_j - 1] = distance * res;
+					mapFlag.ptr<double>(cur_i)[cur_j - 1] = 1;
+					structCache *temp = (structCache*)malloc(sizeof(structCache));
+					temp->next = NULL;
+					tail->src_i = src_i;
+					tail->src_j = src_j;
+					tail->cur_i = cur_i;
+					tail->cur_j = cur_j - 1;
+					tail->next = temp;
+					tail = temp;
+				}
+			}
+
+			if (cur_i >= 1 && mapFlag.ptr<double>(cur_i + 1)[cur_j] == 0) {
+				double di = abs(cur_i - src_i);
+				double dj = abs(cur_j - src_j);
+				double distance = sqrt(di * di + dj * dj);
+
+				if (distance <= cell_radius) {
+					mapCache.ptr<double>(cur_i + 1)[cur_j] = distance * res;
+					mapFlag.ptr<double>(cur_i + 1)[cur_j] = 1;
+					structCache *temp = (structCache*)malloc(sizeof(structCache));
+					temp->next = NULL;
+					tail->src_i = src_i;
+					tail->src_j = src_j;
+					tail->cur_i = cur_i + 1;
+					tail->cur_j = cur_j;
+					tail->next = temp;
+					tail = temp;
+				}
+			}
+
+			if (cur_j >= 1 && mapFlag.ptr<double>(cur_i)[cur_j + 1] == 0) {
+				double di = abs(cur_i - src_i);
+				double dj = abs(cur_j - src_j);
+				double distance = sqrt(di * di + dj * dj);
+
+				if (distance <= cell_radius) {
+					mapCache.ptr<double>(cur_i)[cur_j + 1] = distance * res;
+					mapFlag.ptr<double>(cur_i)[cur_j + 1] = 1;
+					structCache *temp = (structCache*)malloc(sizeof(structCache));
+					temp->next = NULL;
+					tail->src_i = src_i;
+					tail->src_j = src_j;
+					tail->cur_i = cur_i;
+					tail->cur_j = cur_j + 1;
+					tail->next = temp;
+					tail = temp;
+				}
+			}
+			now = now->next;
+		}
+		return mapCache;
+	}
+
 	structLSD myLineSegmentDetector(Mat MapGray, int oriMapCol, int oriMapRow, double sca, double sig, double angThre, double denThre, double pseBin) {
-		//图像缩放—— 高斯降采样
+		//图像缩放——高斯降采样
 		int newMapCol = (int)floor(oriMapCol * sca);
 		int newMapRow = (int)floor(oriMapRow * sca);
+		int x, y;
+		for (y = 1; y < oriMapRow; y++) {
+			for (x = 1; x < oriMapCol; x++) {
+				if (MapGray.ptr<uint8_t>(y)[x] == 1)
+					MapGray.ptr<uint8_t>(y)[x] = 255;
+				else if (MapGray.ptr<uint8_t>(y)[x] == 255)
+					MapGray.ptr<uint8_t>(y)[x] = 0;
+			}
+		}
 		Mat GaussImage = GaussianSampler(MapGray, sca, sig);
 
 		Mat usedMap = Mat::zeros(newMapRow, newMapCol, CV_8UC1);//记录像素点状态
@@ -22,7 +149,6 @@ namespace mylsd {
 
 		//计算梯度和level-line场方向
 		double maxGrad = 0;
-		int x, y;
 		for (y = 1; y < newMapRow; y++) {
 			for (x = 1; x < newMapCol; x++) {
 				double gradX, gradY, valueMagMap, valueDegMap;

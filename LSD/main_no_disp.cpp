@@ -36,23 +36,19 @@ int main() {
 	//读取mapValue 地图像素数据
 	int cnt_row, cnt_col;
 	fp = fopen("../data/mapValue.txt", "r");
-	Mat MapGray = Mat::zeros(oriMapRow, oriMapCol, CV_8UC1);
+	Mat mapValue = Mat::zeros(oriMapRow, oriMapCol, CV_8UC1);
 	int max = 0;
 	for (cnt_row = 0; cnt_row < oriMapRow; cnt_row++)
 		for (cnt_col = 0; cnt_col < oriMapCol; cnt_col++)
-			fscanf(fp, "%d", &MapGray.ptr<uint8_t>(cnt_row)[cnt_col]);
+			fscanf(fp, "%d", &mapValue.ptr<uint8_t>(cnt_row)[cnt_col]);
 	fclose(fp);
+
+	//计算mapCache，用于特征匹配的先验概率
+	double z_occ_max_dis = 2;
+	Mat mapCache = mylsd::createMapCache(mapValue, mapParam.mapResol, z_occ_max_dis);
 
 	//LineSegmentDetector 提取地图边界直线信息
-	mylsd::structLSD LSD = mylsd::myLineSegmentDetector(MapGray, oriMapCol, oriMapRow, 0.3, 0.6, 22.5, 0.7, 1024);
-
-	//读取mapCache
-	fp = fopen("../data/mapCache.txt", "r");
-	Mat mapCache(mapParam.oriMapRow, mapParam.oriMapCol, CV_64F);
-	for (unsigned i = 0; i < mapParam.oriMapRow; i++)
-		for (unsigned j = 0; j < mapParam.oriMapCol; j++)
-			fscanf(fp, "%lf", &mapCache.ptr<double>(i)[j]);
-	fclose(fp);
+	mylsd::structLSD LSD = mylsd::myLineSegmentDetector(mapValue, oriMapCol, oriMapRow, 0.3, 0.6, 22.5, 0.7, 1024);
 
 	//读取雷达信息
 	fp = fopen("../data/Lidar.txt", "r");
@@ -71,7 +67,6 @@ int main() {
 			fscanf(fp, "%lf%lf", &val1, &val2);
 
 			if (val1 != INFINITY) {
-				//printf("%d %lf %lf\n", len_lp, val1, val2);
 				lidarPointPolar[len_lp].range = val1;
 				lidarPointPolar[len_lp].angle = val2;
 				lidarPointPolar[len_lp].split = false;
@@ -81,15 +76,13 @@ int main() {
 		if (is_EOF == false) {
 			//匹配雷达特征到地图特征 返回像素坐标和真实坐标
 			myrdp::structFeatureScan FS = FeatureScan(mapParam, lidarPointPolar, len_lp, 3, 0.04, 0.5);
-			//imshow("lineIm", FS.lineIm);
-			//waitKey(100);
 			
 			double estimatePose_realworld[3];
 			double estimatePose[3];
 			Mat poseAll;
 			structFA FA = trans2FA(FS, LSD, mapParam, lidarPointPolar, len_lp);
 			myfa::FeatureAssociation(FS.lineIm, FA.scanLinesInfo, FA.mapLinesInfo, FA.mapParam, FA.lidarPos, LSD.lineIm, \
-				mapCache, MapGray, FA.ScanRanges, FA.ScanAngles, estimatePose_realworld, estimatePose, poseAll);
+				mapCache, mapValue, FA.ScanRanges, FA.ScanAngles, estimatePose_realworld, estimatePose, poseAll);
 			for (int i = 0; i < 3; i++)
 				cout << estimatePose_realworld[i] << '\t';
 			cout << endl;
@@ -107,11 +100,13 @@ int main() {
 	}
 	fclose(fp);
 
-	imshow("MapGray", MapGray);
+	imshow("MapGray", mapValue);
 	time_end = clock();
 	printf("time = %lf\n", (double)(time_end - time_start) / CLOCKS_PER_SEC);
 	imshow("lineIm", LSD.lineIm);
 	waitKey(0);
+	destroyAllWindows();
+	return 0;
 }
 
 structFA trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, structMapParam oriMapParam, myrdp::structLidarPointPolar *lidarPointPolar, int len_lp) {
