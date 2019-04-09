@@ -1,0 +1,10 @@
+{
+  "version": "0.2.1",
+  "tasks": [
+    {
+      "taskName": "任务-LSD",
+      "appliesTo": "LSD.sln",
+      "type": "launch"
+    }
+  ]
+}
