@@ -35,9 +35,9 @@ namespace myfa {
 
 	void FeatureAssociation(
 		const Mat& ScanlineIm,
-		const vector<SCANLINES_INFO>& ScanlinesInfo,
-		const vector<LINES_INFO>& MaplinesInfo,
-		const MAP_PARAM& MapParam,
+		const vector<structLinesInfo>& ScanlinesInfo,
+		const vector<structLinesInfo>& MaplinesInfo,
+		const structMapParam& MapParam,
 		const int* LidarPos,
 		const Mat& MaplineIm,
 		const Mat& MapCache,
@@ -124,8 +124,8 @@ namespace myfa {
 		estimatePose[2] = *poseAll.ptr<double>(2, t) / 180 * M_PI;
 
 		// 换成真实世界坐标
-		estimatePose_realworld[0] = estimatePose[0] * MapParam.mapResol + MapParam.mapOrigin[0];
-		estimatePose_realworld[1] = estimatePose[1] * MapParam.mapResol + MapParam.mapOrigin[1];
+		estimatePose_realworld[0] = estimatePose[0] * MapParam.mapResol + MapParam.mapOriX;
+		estimatePose_realworld[1] = estimatePose[1] * MapParam.mapResol + MapParam.mapOriY;
 		estimatePose_realworld[2] = estimatePose[2];
 	}
 
@@ -144,7 +144,7 @@ namespace myfa {
 		const int* LidarPos,
 		const vector<double>& ScanRanges,
 		const vector<double>& ScanAngles,
-		const MAP_PARAM& MapParam,
+		const structMapParam& MapParam,
 		unsigned scan_num_i,
 		unsigned mapline_numi
 	)
@@ -205,7 +205,7 @@ namespace myfa {
 		const double* ScanPose_Global,
 		const vector<double>& ScanRanges,
 		const vector<double>& ScanAngles,
-		const MAP_PARAM& MapParam
+		const structMapParam& MapParam
 	) // 计算 匹配的准确度 Score 越小说明越准确
 	{
 		if (ScanPose_Global[0] > Map_Im.cols || ScanPose_Global[0] < 1 || ScanPose_Global[1] > Map_Im.rows || ScanPose_Global[1] < 1)
@@ -296,6 +296,72 @@ namespace myfa {
 		ScanPoseNew[0] = floor((ScanPosition[0] - Scanline[0]) * cosd_ang_diff - (ScanPosition[1] - Scanline[1]) * sind_ang_diff + Mapline[0]);
 		ScanPoseNew[1] = floor((ScanPosition[0] - Scanline[0]) * sind_ang_diff + (ScanPosition[1] - Scanline[1]) * cosd_ang_diff + Mapline[1]);
 		ScanPoseNew[2] = Scanline[2] + ang_diff;
+	}
+	void samplePos(
+		const Mat& realPos,
+		const Mat& recored_Odom,
+		Mat& sampleRealPos
+	)
+	{
+		sampleRealPos = Mat::zeros(2, *recored_Odom.ptr<int>(0, recored_Odom.cols - 1),CV_64F);
+		double x1, x2, y1, y2, k;
+		double xHigh, xLow, yHigh, yLow;
+		double xRange, yRange;
+		int sampleN;
+		Mat xx, yy;
+		for (int i = 0; i < realPos.cols - 1; i++)
+		{
+			x1 = *realPos.ptr<double>(0, i);
+			y1 = *realPos.ptr<double>(1, i);
+			x2 = *realPos.ptr<double>(0, i + 1);
+			y2 = *realPos.ptr<double>(1, i + 1);
+			k = (y2 - y1) / (x2 - x1);
+			sampleN = *recored_Odom.ptr<int>(0, i + 1) - *recored_Odom.ptr<int>(0, i);
+			if (x1 > x2)
+			{
+				xHigh = x1;
+				xLow = x2;
+			}
+			else
+			{
+				xHigh = x2;
+				xLow = x1;
+			}
+			if (y1 > y2)
+			{
+				yHigh = y1;
+				yLow = y2;
+			}
+			else
+			{
+				yHigh = y2;
+				yLow = y1;
+			}
+			xRange = xHigh - xLow;
+			yRange = yHigh - yLow;
+			xx.create(1, sampleN + 1, CV_64F);
+			yy.create(1, sampleN + 1, CV_64F);
+			if (xRange > yRange)
+			{
+				*xx.ptr<double>(0, 0) = xLow;
+				*xx.ptr<double>(0, sampleN) = xHigh;
+				for (int j = 1; j < sampleN; j++)
+					*xx.ptr<double>(0, j) = *xx.ptr<double>(0, j - 1) + xRange / sampleN;
+				for (int j = 0; j < sampleN + 1; j++)
+					*yy.ptr<double>(0, j) = (*xx.ptr<double>(0, j) - x1) * k + y1;
+			}
+			else
+			{
+				*yy.ptr<double>(0, 0) = yLow;
+				*yy.ptr<double>(0, sampleN) = yHigh;
+				for (int j = 1; j < sampleN; j++)
+					*yy.ptr<double>(0, j) = *yy.ptr<double>(0, j - 1) + yRange / sampleN;
+				for (int j = 0; j < sampleN + 1; j++)
+					*xx.ptr<double>(0, j) = (*yy.ptr<double>(0, j) - y1) / k + x1;
+			}
+			xx.copyTo(sampleRealPos.colRange(*recored_Odom.ptr<int>(0, i) - 1, *recored_Odom.ptr<int>(0, i) + sampleN).row(0));
+			yy.copyTo(sampleRealPos.colRange(*recored_Odom.ptr<int>(0, i) - 1, *recored_Odom.ptr<int>(0, i) + sampleN).row(1));
+		}
 	}
 }
 

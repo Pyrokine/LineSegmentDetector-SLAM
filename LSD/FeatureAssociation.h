@@ -4,50 +4,52 @@
 
 #include<vector>
 #include<opencv2/core.hpp>
+#include<baseFunc.h>
 
 using cv::Mat;
 using std::vector;
 
 namespace myfa {
-	typedef struct _SCANLINES_INFO {
-		double k;		//斜率
-		double b;		//截距
-		double dx;		//直线夹角（夹角范围为0~180度）的余弦
-		double dy;		//直线夹角的正弦
-		double x1;
-		double y1;
-		double x2;
-		double y2;
-		double len;		//直线长度
-	} SCANLINES_INFO;
+	//structLinesInfo
+	//typedef struct _SCANLINES_INFO {
+	//	double k;		//斜率
+	//	double b;		//截距
+	//	double dx;		//直线夹角（夹角范围为0~180度）的余弦
+	//	double dy;		//直线夹角的正弦
+	//	double x1;
+	//	double y1;
+	//	double x2;
+	//	double y2;
+	//	double len;		//直线长度
+	//} SCANLINES_INFO;
 
-	typedef struct _LINES_INFO {
-		double k;		//斜率
-		double b;		//截距
-		double dx;		//直线夹角（夹角范围为0~180度）的余弦
-		double dy;		//直线夹角的正弦
-		double x1;
-		double y1;
-		double x2;
-		double y2;
-		double len;		//直线长度
-		int orient;		//1表示斜率大于0,-1表示斜率小于0
-	} LINES_INFO;
+	//typedef struct _LINES_INFO {
+	//	double k;
+	//	double b;
+	//	double dx;
+	//	double dy;
+	//	double x1;
+	//	double y1;
+	//	double x2;
+	//	double y2;
+	//	double len;
+	//	int orient;
+	//} LINES_INFO;
 
-	typedef struct _MAP_PARAM {
-		unsigned int mapHeigh;	//地图的高度
-		unsigned int mapWidth;	//地图的宽度
-		double mapResol;		//地图的分辨率
-		double mapOrigin[2];	//坐标系原点的位置
-	} MAP_PARAM;
+	//typedef struct _MAP_PARAM {
+	//	unsigned int mapHeight;	//地图的高度
+	//	unsigned int mapWidth;	//地图的宽度
+	//	double mapResol;		//地图的分辨率
+	//	double mapOrigin[2];	//坐标系原点的位置	[mapOriX, mapOriY]
+	//} MAP_PARAM;
 
 	double NormalizedLineDirection(double x1, double y1, double x2, double y2);
 
 	void FeatureAssociation(
 		const Mat& ScanlineIm,
-		const vector<SCANLINES_INFO>& ScanlinesInfo,
-		const vector<LINES_INFO>& MaplinesInfo,
-		const MAP_PARAM& MapParam,
+		const vector<structLinesInfo>& ScanlinesInfo,
+		const vector<structLinesInfo>& MaplinesInfo,
+		const structMapParam& MapParam,
 		const int* LidarPos,
 		const Mat& MaplineIm,
 		const Mat& MapCache,
@@ -74,7 +76,7 @@ namespace myfa {
 		const int* LidarPos,
 		const vector<double>& ScanRanges,
 		const vector<double>& ScanAngles,
-		const MAP_PARAM& MapParam,
+		const structMapParam& MapParam,
 		unsigned scan_num_i,
 		unsigned mapline_numi
 	);
@@ -85,7 +87,7 @@ namespace myfa {
 		const double* ScanPose_Global,
 		const vector<double>& ScanRanges,
 		const vector<double>& ScanAngles,
-		const MAP_PARAM& MapParam
+		const structMapParam& MapParam
 	);
 
 	void RotateScanIm(
@@ -95,6 +97,12 @@ namespace myfa {
 		const Mat& Map_Im,
 		const int* ScanPosition,
 		double* ScanPoseNew
+	);
+
+	void samplePos(
+		const Mat& realPos,
+		const Mat& recored_Odom,
+		Mat& sampleRealPos
 	);
 }
 
