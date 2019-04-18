@@ -75,6 +75,8 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
 		//数据接口转换
 		structFA FA = trans2FA(FS, LSD, mapParam, lidarPointPolar, len_lp);
 		//特征匹配
+		if (isMapReady == false)
+			return;
 		myfa::FeatureAssociation(FS.lineIm, FA.scanLinesInfo, FA.mapLinesInfo, mapParam, FA.lidarPos, LSD.lineIm, \
 			mapCache, mapValue, FA.ScanRanges, FA.ScanAngles, estimatePose_realworld, estimatePose, poseAll);
 
