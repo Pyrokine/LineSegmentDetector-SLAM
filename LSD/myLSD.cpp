@@ -7,7 +7,6 @@ namespace mylsd {
 	//LineSegmentDetector
 	structRec *recSaveDisp;
 	const double pi = 4.0 * atan(1.0);
-	int regCnt = 0;
 
 	Mat createMapCache(Mat MapGray, double res, double z_occ_max_dis) {
 		//计算图中点到最近点的最小距离，在特征匹配时用作先验概率
@@ -127,6 +126,7 @@ namespace mylsd {
 	}
 
 	structLSD myLineSegmentDetector(Mat MapGray, int oriMapCol, int oriMapRow, double sca, double sig, double angThre, double denThre, double pseBin) {
+		int regCnt = 0;
 		//图像缩放——高斯降采样
 		int newMapCol = (int)floor(oriMapCol * sca);
 		int newMapRow = (int)floor(oriMapRow * sca);

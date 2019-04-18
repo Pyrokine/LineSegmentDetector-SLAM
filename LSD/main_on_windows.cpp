@@ -11,9 +11,8 @@ using namespace cv;
 using namespace std;
 
 typedef struct _structFA {
-	vector<myfa::SCANLINES_INFO> scanLinesInfo;
-	vector<myfa::LINES_INFO> mapLinesInfo;
-	myfa::MAP_PARAM mapParam;
+	vector<structLinesInfo> scanLinesInfo;
+	vector<structLinesInfo> mapLinesInfo;
 	int lidarPos[2];
 	vector<double> ScanRanges;
 	vector<double> ScanAngles;
@@ -27,7 +26,7 @@ int main() {
 	clock_t time_start, time_end;
 	time_start = clock();
 	//读取mapParam 地图信息
-	FILE *fp = fopen("../data/mapParam.txt", "r");
+	FILE *fp = fopen("../data/mapParam_map1.txt", "r");
 	structMapParam mapParam;
 	fscanf(fp, "%d %d %lf %lf %lf", &mapParam.oriMapCol, &mapParam.oriMapRow, &mapParam.mapResol, &mapParam.mapOriX, &mapParam.mapOriY);
 	fclose(fp);
@@ -35,13 +34,15 @@ int main() {
 	
 	//读取mapValue 地图像素数据
 	int cnt_row, cnt_col;
-	fp = fopen("../data/mapValue.txt", "r");
+	fp = fopen("../data/mapValue_map2.txt", "r");
 	Mat mapValue = Mat::zeros(oriMapRow, oriMapCol, CV_8UC1);
 	int max = 0;
 	for (cnt_row = 0; cnt_row < oriMapRow; cnt_row++)
 		for (cnt_col = 0; cnt_col < oriMapCol; cnt_col++)
 			fscanf(fp, "%d", &mapValue.ptr<uint8_t>(cnt_row)[cnt_col]);
 	fclose(fp);
+	imshow("1", mapValue);
+	waitKey(0);
 
 	//计算mapCache，用于特征匹配的先验概率
 	double z_occ_max_dis = 2;
@@ -81,7 +82,7 @@ int main() {
 			double estimatePose[3];
 			Mat poseAll;
 			structFA FA = trans2FA(FS, LSD, mapParam, lidarPointPolar, len_lp);
-			myfa::FeatureAssociation(FS.lineIm, FA.scanLinesInfo, FA.mapLinesInfo, FA.mapParam, FA.lidarPos, LSD.lineIm, \
+			myfa::FeatureAssociation(FS.lineIm, FA.scanLinesInfo, FA.mapLinesInfo, mapParam, FA.lidarPos, LSD.lineIm, \
 				mapCache, mapValue, FA.ScanRanges, FA.ScanAngles, estimatePose_realworld, estimatePose, poseAll);
 			for (int i = 0; i < 3; i++)
 				cout << estimatePose_realworld[i] << '\t';
@@ -139,12 +140,6 @@ structFA trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, structMapPa
 		FA.mapLinesInfo[i].y2 = LSD.linesInfo[i].y2;
 		FA.mapLinesInfo[i].len = LSD.linesInfo[i].len;
 	}
-	//mapParam
-	FA.mapParam.mapHeigh = oriMapParam.oriMapCol;
-	FA.mapParam.mapWidth = oriMapParam.oriMapRow;
-	FA.mapParam.mapResol = oriMapParam.mapResol;
-	FA.mapParam.mapOrigin[0] = oriMapParam.mapOriX;
-	FA.mapParam.mapOrigin[1] = oriMapParam.mapOriY;
 	//lidarPos
 	FA.lidarPos[0] = FS.lidarPos.x;
 	FA.lidarPos[1] = FS.lidarPos.y;

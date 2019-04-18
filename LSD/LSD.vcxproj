@@ -21,7 +21,8 @@
   <ItemGroup>
     <ClCompile Include="baseFunc.cpp" />
     <ClCompile Include="FeatureAssociation.cpp" />
-    <ClCompile Include="main_no_disp.cpp" />
+    <ClCompile Include="main_on_linux.cpp" />
+    <ClCompile Include="main_on_windows.cpp" />
     <ClCompile Include="myLSD.cpp" />
     <ClCompile Include="myRDP.cpp" />
   </ItemGroup>
@@ -88,8 +89,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(IncludePath)</IncludePath>
-    <LibraryPath>$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\opt\ros\melodic\x64\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\opt\ros\melodic\x64\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>

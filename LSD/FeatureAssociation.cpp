@@ -297,6 +297,7 @@ namespace myfa {
 		ScanPoseNew[1] = floor((ScanPosition[0] - Scanline[0]) * sind_ang_diff + (ScanPosition[1] - Scanline[1]) * cosd_ang_diff + Mapline[1]);
 		ScanPoseNew[2] = Scanline[2] + ang_diff;
 	}
+
 	void samplePos(
 		const Mat& realPos,
 		const Mat& recored_Odom,
