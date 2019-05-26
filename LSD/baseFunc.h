@@ -14,6 +14,8 @@
 #ifndef _BASEFUNC_
 #define _BASEFUNC_
 
+#define debugMode
+
 typedef struct _structMapParam {
 	int oriMapCol;
 	int oriMapRow;
@@ -35,8 +37,14 @@ typedef struct _structLinesInfo {
 	int orient;
 } structLinesInfo;
 
+typedef struct _structPosition {
+	double x;
+	double y;
+	double ang;
+} structPosition;
 double sind(double x);
 double cosd(double x);
 double atand(double x);
 
+const double z_occ_max_dis = 2;
 #endif // ! _BASEFUNC_

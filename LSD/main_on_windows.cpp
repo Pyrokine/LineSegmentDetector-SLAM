@@ -4,29 +4,29 @@
 #include <fstream>
 #include <myLSD.h>
 #include <myRDP.h>
-#include <FeatureAssociation.h>
+#include <myFA.h>
+//#include <FeatureAssociation.h>
 #include <baseFunc.h>
 
 using namespace cv;
 using namespace std;
 
-typedef struct _structFA {
-	vector<structLinesInfo> scanLinesInfo;
-	vector<structLinesInfo> mapLinesInfo;
-	int lidarPos[2];
-	vector<double> ScanRanges;
-	vector<double> ScanAngles;
-} structFA;
-
-structFA trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, structMapParam oriMapParam, myrdp::structLidarPointPolar *lidarPointPolar, int len_lp);
+myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, structMapParam oriMapParam, \
+	myrdp::structLidarPointPolar *lidarPointPolar, int len_lp, Mat mapCache, double z_occ_max_dist);
 
 int nframe = 99, pointPerLoop = 360;
 
 int main() {
 	clock_t time_start, time_end;
 	time_start = clock();
+	//路径
+	string path1 = "../line_data/data0/", path2;
+	const char *path;
+	/*string path1 = "../data_20190523/data/";*/
 	//读取mapParam 地图信息
-	FILE *fp = fopen("../data/mapParam_map1.txt", "r");
+	path2 = path1 + "mapParam.txt";
+	path = path2.data();
+	FILE *fp = fopen(path, "r");
 	structMapParam mapParam;
 	fscanf(fp, "%d %d %lf %lf %lf", &mapParam.oriMapCol, &mapParam.oriMapRow, &mapParam.mapResol, &mapParam.mapOriX, &mapParam.mapOriY);
 	fclose(fp);
@@ -34,25 +34,34 @@ int main() {
 	
 	//读取mapValue 地图像素数据
 	int cnt_row, cnt_col;
-	fp = fopen("../data/mapValue_map2.txt", "r");
+	path2 = path1 + "mapValue.txt";
+	path = path2.data();
+	fp = fopen(path, "r");
 	Mat mapValue = Mat::zeros(oriMapRow, oriMapCol, CV_8UC1);
 	int max = 0;
 	for (cnt_row = 0; cnt_row < oriMapRow; cnt_row++)
 		for (cnt_col = 0; cnt_col < oriMapCol; cnt_col++)
 			fscanf(fp, "%d", &mapValue.ptr<uint8_t>(cnt_row)[cnt_col]);
 	fclose(fp);
-	imshow("1", mapValue);
-	waitKey(0);
+	//imshow("1", mapValue);
+	//waitKey(1);
 
 	//计算mapCache，用于特征匹配的先验概率
-	double z_occ_max_dis = 2;
+	
 	Mat mapCache = mylsd::createMapCache(mapValue, mapParam.mapResol, z_occ_max_dis);
 
 	//LineSegmentDetector 提取地图边界直线信息
 	mylsd::structLSD LSD = mylsd::myLineSegmentDetector(mapValue, oriMapCol, oriMapRow, 0.3, 0.6, 22.5, 0.7, 1024);
+	Mat Display = LSD.lineIm.clone();
+
+	imshow("mapCache", mapCache);
+	imshow("Display", Display);
+	waitKey(0);
 
 	//读取雷达信息
-	fp = fopen("../data/Lidar.txt", "r");
+	path2 = path1 + "Lidar.txt";
+	path = path2.data();
+	fp = fopen(path, "r");
 	int i = 0, len_lp = 0;
 	myrdp::structLidarPointPolar lidarPointPolar[360];
 	while (!feof(fp)) {
@@ -76,24 +85,21 @@ int main() {
 		}
 		if (is_EOF == false) {
 			//匹配雷达特征到地图特征 返回像素坐标和真实坐标
-			myrdp::structFeatureScan FS = FeatureScan(mapParam, lidarPointPolar, len_lp, 3, 0.04, 0.5);
+			myrdp::structFeatureScan FS = FeatureScan(mapParam, lidarPointPolar, len_lp, 3, 0.08, 0.5);
 			
 			double estimatePose_realworld[3];
 			double estimatePose[3];
 			Mat poseAll;
-			structFA FA = trans2FA(FS, LSD, mapParam, lidarPointPolar, len_lp);
-			myfa::FeatureAssociation(FS.lineIm, FA.scanLinesInfo, FA.mapLinesInfo, mapParam, FA.lidarPos, LSD.lineIm, \
-				mapCache, mapValue, FA.ScanRanges, FA.ScanAngles, estimatePose_realworld, estimatePose, poseAll);
-			for (int i = 0; i < 3; i++)
-				cout << estimatePose_realworld[i] << '\t';
-			cout << endl;
-			for (int i = 0; i < 3; i++)
-				cout << estimatePose[i] << '\t';
-			cout << endl << endl;
+			myfa::structFAInput FAInput = trans2FA(FS, LSD, mapParam, lidarPointPolar, len_lp, mapCache, z_occ_max_dis);
+			myfa::structScore FA = myfa::FeatureAssociation(&FAInput);
+			//myfa::FeatureAssociation(FS.lineIm, FAInput.scanLinesInfo, FAInput.mapLinesInfo, mapParam, FAInput.lidarPos, LSD.lineIm, \
+				//mapCache, mapValue, FAInput.ScanRanges, FAInput.ScanAngles, estimatePose_realworld, estimatePose, poseAll);
+			printf("%f %f %f\n", FA.pos.x, FA.pos.y, FA.pos.ang);
 
 			//将图像坐标加入地图中
-			LSD.lineIm.ptr<uint8_t>((int)estimatePose[1])[(int)estimatePose[0]] = 255;
-			imshow("lineIm", LSD.lineIm);
+			//Display.ptr<uint8_t>((int)FA.pos.y)[(int)FA.pos.x] = 255;
+			circle(Display, Point ((int)FA.pos.x, (int)FA.pos.y), 1, Scalar(255, 255, 255));
+			imshow("lineIm", Display);
 			waitKey(1);
 		}
 		else
@@ -104,15 +110,16 @@ int main() {
 	imshow("MapGray", mapValue);
 	time_end = clock();
 	printf("time = %lf\n", (double)(time_end - time_start) / CLOCKS_PER_SEC);
-	imshow("lineIm", LSD.lineIm);
+	imshow("lineIm", Display);
 	waitKey(0);
 	destroyAllWindows();
 	return 0;
 }
 
-structFA trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, structMapParam oriMapParam, myrdp::structLidarPointPolar *lidarPointPolar, int len_lp) {
+myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, structMapParam oriMapParam,\
+	myrdp::structLidarPointPolar *lidarPointPolar, int len_lp, Mat mapCache, double z_occ_max_dist) {
 	//将数据格式转为FeatureAssociation格式
-	structFA FA;
+	myfa::structFAInput FA;
 	int i;
 	//scanLinesInfo
 	FA.scanLinesInfo.resize(FS.len_linesInfo);
@@ -141,14 +148,17 @@ structFA trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, structMapPa
 		FA.mapLinesInfo[i].len = LSD.linesInfo[i].len;
 	}
 	//lidarPos
-	FA.lidarPos[0] = FS.lidarPos.x;
-	FA.lidarPos[1] = FS.lidarPos.y;
+	FA.lidarPos[0] = (int)round(FS.lidarPos.x);
+	FA.lidarPos[1] = (int)round(FS.lidarPos.y);
 	printf("x:%lf y:%lf\n", FS.lidarPos.x, FS.lidarPos.y);
+	FA.mapCache = mapCache;
+	FA.scanIm = FS.lineIm;
+	FA.mapIm = LSD.lineIm;
 	//ScanRanges ScanAngles
-	for (i = 0; i < len_lp; i++) {
-		FA.ScanRanges.push_back(lidarPointPolar[i].range);
-		FA.ScanAngles.push_back(lidarPointPolar[i].angle);
-	}
+	//for (i = 0; i < len_lp; i++) {
+	//	FA.ScanRanges.push_back(lidarPointPolar[i].range);
+	//	FA.ScanAngles.push_back(lidarPointPolar[i].angle);
+	//}
 	return FA;
 }
 

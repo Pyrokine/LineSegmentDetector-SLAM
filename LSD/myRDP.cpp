@@ -29,7 +29,7 @@ namespace myrdp{
 			if (lidarPointRecGlobal[i].y > maxY)
 				maxY = lidarPointRecGlobal[i].y;
 		}
-		double oriXLim = maxX - minX, oriYLim = maxY - minY;
+		int oriXLim = (int)ceil(maxX - minX), oriYLim = (int)ceil(maxY - minY);
 		//根据地图分辨率计算真实坐标的像素坐标
 		structLidarPointRec lidarPos;
 		lidarPos.x = floor((scanPose[0] - mapParam.mapOriX) / mapParam.mapResol - minX);

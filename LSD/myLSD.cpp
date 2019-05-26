@@ -10,7 +10,7 @@ namespace mylsd {
 
 	Mat createMapCache(Mat MapGray, double res, double z_occ_max_dis) {
 		//计算图中点到最近点的最小距离，在特征匹配时用作先验概率
-		int cell_radius = floor(z_occ_max_dis / res);
+		int cell_radius = (int)floor(z_occ_max_dis / res);
 		int height = MapGray.rows, width = MapGray.cols;
 		Mat mapCache = Mat::zeros(height, width, CV_64FC1);
 		Mat mapFlag = Mat::zeros(height, width, CV_64FC1);
@@ -125,7 +125,7 @@ namespace mylsd {
 		return mapCache;
 	}
 
-	structLSD myLineSegmentDetector(Mat MapGray, int oriMapCol, int oriMapRow, double sca, double sig, double angThre, double denThre, double pseBin) {
+	structLSD myLineSegmentDetector(Mat MapGray, int oriMapCol, int oriMapRow, double sca, double sig, double angThre, double denThre, int pseBin) {
 		int regCnt = 0;
 		//图像缩放——高斯降采样
 		int newMapCol = (int)floor(oriMapCol * sca);
@@ -544,10 +544,10 @@ namespace mylsd {
 									curMap.ptr<uint8_t>(m)[n] = 1;
 									growNum++;
 									structPts *temp = (structPts*)malloc(sizeof(structPts));
-									temp[0].x = n;
-									temp[0].y = m;
-									temp[0].next = NULL;
-									regPts_end[0].next = temp;
+									temp->x = n;
+									temp->y = m;
+									temp->next = NULL;
+									regPts_end->next = temp;
 									regPts_end = temp;
 								}
 							}

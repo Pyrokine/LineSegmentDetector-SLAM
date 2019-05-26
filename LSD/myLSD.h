@@ -129,7 +129,7 @@ namespace mylsd {
 	int Comp(const void *p1, const void *p2);
 
 	Mat createMapCache(Mat MapGray, double res, double z_occ_max_dis);
-	structLSD myLineSegmentDetector(Mat MapGray, int oriMapCol, int oriMapRow, double sca, double sig, double angThre, double denThre, double pseBin);
+	structLSD myLineSegmentDetector(Mat MapGray, int oriMapCol, int oriMapRow, double sca, double sig, double angThre, double denThre, int pseBin);
 	Mat GaussianSampler(Mat image, double sca, double sig);
 	structRegionGrower RegionGrower(int x, int y, Mat banMap, double regDeg, Mat degMap, double degThre);
 	structRec RectangleConverter(structReg reg, Mat magMap, double aliPro, double degThre);
