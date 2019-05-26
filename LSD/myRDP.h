@@ -23,6 +23,8 @@
 #include <math.h>
 #include <fstream>
 #include <baseFunc.h>
+
+using namespace std;
 using namespace cv;
 
 namespace myrdp {
@@ -55,6 +57,7 @@ namespace myrdp {
 		structLinesInfo *linesInfo;
 		structLidarPointRec lidarPos;
 		int len_linesInfo;
+		vector<structPosition> scanImPoint;
 	} structFeatureScan;
 
 	structFeatureScan FeatureScan(structMapParam mapParam, structLidarPointPolar *lidarPointPolar, int len_lp, int RegionPointLimitNumber, double Threshold_line, double line_len_threshold_m);

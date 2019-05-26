@@ -34,7 +34,7 @@ namespace mylsd {
 					mapFlag.ptr<double>(i)[j] = 1;
 				}
 				else {
-					mapCache.ptr<double>(i)[j] = 2;
+					mapCache.ptr<double>(i)[j] = z_occ_max_dis;
 				}
 			}
 		}
@@ -352,6 +352,8 @@ namespace mylsd {
 						lineIm.ptr<uint8_t>(yy[j])[xx[j]] = 255;
 				}
 			}
+			free(xx);
+			free(yy);
 			linesInfo[i].k = k;
 			linesInfo[i].b = (y1 + y2) / 2.0 - k * (x1 + x2) / 2.0;
 			linesInfo[i].dx = cosd(ang);
@@ -367,6 +369,8 @@ namespace mylsd {
 		returnLSD.lineIm = lineIm;
 		returnLSD.linesInfo = linesInfo;
 		returnLSD.len_linesInfo = i;
+
+		free(binCell);
 		return returnLSD;
 	}
 

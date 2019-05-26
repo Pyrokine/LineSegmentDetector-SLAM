@@ -15,6 +15,7 @@ namespace myfa {
 	typedef struct _structFAInput {
 		vector<structLinesInfo> scanLinesInfo;
 		vector<structLinesInfo> mapLinesInfo;
+		vector<structPosition> scanImPoint;
 		int lidarPos[2];
 		Mat mapCache;
 		Mat scanIm;
@@ -28,11 +29,6 @@ namespace myfa {
 		double score;
 		struct _structScore *next = NULL;
 	} structScore;
-
-	typedef struct _structSTMM {
-		structScore *Score_head;
-		structScore *Score_now;
-	} structSTMM;
 
 	typedef struct _structStaEnd {
 		double staX;
@@ -49,10 +45,10 @@ namespace myfa {
 	} structRotateScanIm;
 
 	structScore FeatureAssociation(structFAInput *FAInput);
-	structSTMM ScanToMapMatch(structFAInput *FAInput, int cntMapLine, int cntScanLine);
+	void ScanToMapMatch(structFAInput *FAInput, int cntMapLine, int cntScanLine, vector<structScore> *Score);
 	double NormalizedLineDirection(structStaEnd lineStaEnd);
 	structRotateScanIm rotateScanIm(structFAInput *FAInput, structPosition mapPose, structPosition scanPose);
-	double ScanToMapMatchScore(structFAInput *FAInput, structRotateScanIm RSI);
+	double CalcScore(structFAInput *FAInput, structRotateScanIm RSI);
 	int CompScore(const void *p1, const void *p2);
 }
 

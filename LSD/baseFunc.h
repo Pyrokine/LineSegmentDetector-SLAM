@@ -46,5 +46,5 @@ double sind(double x);
 double cosd(double x);
 double atand(double x);
 
-const double z_occ_max_dis = 2;
+const double z_occ_max_dis = 1;
 #endif // ! _BASEFUNC_

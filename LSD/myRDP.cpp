@@ -7,7 +7,7 @@ namespace myrdp{
 	const double pi = 4.0 * atan(1.0);
 
 	structFeatureScan FeatureScan(structMapParam mapParam, structLidarPointPolar *lidarPointPolar, int len_lp, int RegionPointLimitNumber, double threLine, double lineDistThreM) {
-		////RamerDouglasPeucker
+		//RamerDouglasPeucker
 		double scanPose[3] = { 0 };
 		structRegionSegmentation RS = RegionSegmentation(lidarPointPolar, len_lp, scanPose, RegionPointLimitNumber);
 		SplitMerge(lidarPointPolar, len_lp, scanPose, RS, threLine);
@@ -41,6 +41,7 @@ namespace myrdp{
 		double lineDistThre = lineDistThreM / mapParam.mapResol;
 
 		//根据分割点将区块分隔开并提取直线信息
+		vector<structPosition> scanImPoint;
 		for (i = 0; i < RS.cellNum; i++) {
 			int startPoint = RS.pointCell[i].startPointNum, endPoint = RS.pointCell[i].endPointNum;
 			int j, len_axis = 0, num_split = 1, *axis;
@@ -138,16 +139,28 @@ namespace myrdp{
 					//标记直线像素
 					if (xx_len > yy_len) {
 						for (m = 0; m < xx_len; m++) {
-							if (xx[m] != 0 && yy[m] != 0)
+							if (xx[m] != 0 && yy[m] != 0) {
 								lineIm.ptr<uint8_t>(yy[m])[xx[m]] = 255;
+								structPosition poseTemp;
+								poseTemp.x = xx[m];
+								poseTemp.y = yy[m];
+								scanImPoint.push_back(poseTemp);
+							}
 						}
 					}
 					else {
 						for (m = 0; m < yy_len; m++) {
-							if (xx[m] != 0 && yy[m] != 0)
+							if (xx[m] != 0 && yy[m] != 0) {
 								lineIm.ptr<uint8_t>(yy[m])[xx[m]] = 255;
+								structPosition poseTemp;
+								poseTemp.x = xx[m];
+								poseTemp.y = yy[m];
+								scanImPoint.push_back(poseTemp);
+							}
 						}
 					}
+					free(xx);
+					free(yy);
 					linesInfo[cnt_linesInfo].k = k;
 					linesInfo[cnt_linesInfo].b = (y1 + y2) / 2.0 - k * (x1 + x2) / 2.0;
 					linesInfo[cnt_linesInfo].dx = cosd(ang);
@@ -167,6 +180,7 @@ namespace myrdp{
 		FS.linesInfo = linesInfo;
 		FS.lidarPos = lidarPos;
 		FS.len_linesInfo = cnt_linesInfo;
+		FS.scanImPoint = scanImPoint;
 		return FS;
 	}
 

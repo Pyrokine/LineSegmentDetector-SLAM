@@ -20,9 +20,10 @@ int main() {
 	clock_t time_start, time_end;
 	time_start = clock();
 	//路径
-	string path1 = "../line_data/data0/", path2;
+	//string path1 = "../line_data/data0/";
+	string path1 = "../data_20190523/data/";
+	string path2;
 	const char *path;
-	/*string path1 = "../data_20190523/data/";*/
 	//读取mapParam 地图信息
 	path2 = path1 + "mapParam.txt";
 	path = path2.data();
@@ -54,6 +55,7 @@ int main() {
 	mylsd::structLSD LSD = mylsd::myLineSegmentDetector(mapValue, oriMapCol, oriMapRow, 0.3, 0.6, 22.5, 0.7, 1024);
 	Mat Display = LSD.lineIm.clone();
 
+	//printf("%d %d\n", Display.size[0], Display.size[1]);
 	imshow("mapCache", mapCache);
 	imshow("Display", Display);
 	waitKey(0);
@@ -62,11 +64,12 @@ int main() {
 	path2 = path1 + "Lidar.txt";
 	path = path2.data();
 	fp = fopen(path, "r");
-	int i = 0, len_lp = 0;
+	int i = 0, len_lp = 0, cnt_frame = 1;
 	myrdp::structLidarPointPolar lidarPointPolar[360];
 	while (!feof(fp)) {
 		len_lp = 0;
 		bool is_EOF = false;
+		printf("第%d帧:\n", cnt_frame++);
 		//每帧最多360帧数据 循环读取（输入）
 		for (i = 0; i < pointPerLoop; i++) {
 			double val1, val2;
@@ -94,7 +97,7 @@ int main() {
 			myfa::structScore FA = myfa::FeatureAssociation(&FAInput);
 			//myfa::FeatureAssociation(FS.lineIm, FAInput.scanLinesInfo, FAInput.mapLinesInfo, mapParam, FAInput.lidarPos, LSD.lineIm, \
 				//mapCache, mapValue, FAInput.ScanRanges, FAInput.ScanAngles, estimatePose_realworld, estimatePose, poseAll);
-			printf("%f %f %f\n", FA.pos.x, FA.pos.y, FA.pos.ang);
+			printf("%f %f %f\n\n", FA.pos.x, FA.pos.y, FA.pos.ang);
 
 			//将图像坐标加入地图中
 			//Display.ptr<uint8_t>((int)FA.pos.y)[(int)FA.pos.x] = 255;
@@ -150,10 +153,11 @@ myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, 
 	//lidarPos
 	FA.lidarPos[0] = (int)round(FS.lidarPos.x);
 	FA.lidarPos[1] = (int)round(FS.lidarPos.y);
-	printf("x:%lf y:%lf\n", FS.lidarPos.x, FS.lidarPos.y);
+	//printf("x:%lf y:%lf\n", FS.lidarPos.x, FS.lidarPos.y);
 	FA.mapCache = mapCache;
 	FA.scanIm = FS.lineIm;
 	FA.mapIm = LSD.lineIm;
+	FA.scanImPoint = FS.scanImPoint;
 	//ScanRanges ScanAngles
 	//for (i = 0; i < len_lp; i++) {
 	//	FA.ScanRanges.push_back(lidarPointPolar[i].range);
