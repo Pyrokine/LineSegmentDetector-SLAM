@@ -4,9 +4,16 @@ using namespace cv;
 using namespace std;
 
 namespace myfa {
+	int num_tasks = 0;
+	int num_done = 0;
+	pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
 	structScore FeatureAssociation(structFAInput *FAInput) {
 		int sizeScanLine = (int)FAInput->scanLinesInfo.size();
 		int sizeMapLine = (int)FAInput->mapLinesInfo.size();
+		num_tasks = 0;
+		num_done = 0;
+		threadpool_t *pool = threadpool_create(lenTHREAD, lenQUEUE, 0);
 		vector<structScore> Score;
 
 		int cntScanLine = 0;
@@ -22,9 +29,22 @@ namespace myfa {
 				if (lenMapLine < lenScanLine - lenDiff || lenMapLine > lenScanLine + lenDiff)
 					continue;
 
-				ScanToMapMatch(FAInput, cntMapLine, cntScanLine, &Score);
+				//ScanToMapMatch(FAInput, cntMapLine, cntScanLine, &Score);
+				while (num_tasks - num_done > lenQUEUE);
+				structThreadSTMM *argSTMM = (structThreadSTMM*)malloc(sizeof(structThreadSTMM));
+				argSTMM->cntMapLine = cntMapLine;
+				argSTMM->cntScanLine = cntScanLine;
+				argSTMM->FAInput = FAInput;
+				argSTMM->Score = &Score;
+
+				threadpool_add(pool, &thread_ScanToMapMatch, argSTMM, 0);
+				pthread_mutex_lock(&mutex);
+				num_tasks++;
+				pthread_mutex_unlock(&mutex);
 			}
 		}
+		while (num_tasks - num_done > 1);
+		threadpool_destroy(pool, 0);
 
 		int lenScore = (int)Score.size();
 		structScore *poseAll = (structScore*)malloc(lenScore * sizeof(structScore));
@@ -39,6 +59,79 @@ namespace myfa {
 
 		free(poseAll);
 		return poseBase;
+	}
+
+	void thread_ScanToMapMatch(void *arg) {
+		structThreadSTMM *argSTMM = (structThreadSTMM*) arg;
+
+		int lenScore = 0;
+		int i = 0;
+		for (i = 1; i <= 4; i++) {
+			structStaEnd mapStaEndPoint, scanStaEndPoint;
+			if (i == 1) {
+				mapStaEndPoint.staX = argSTMM->FAInput->mapLinesInfo[argSTMM->cntMapLine].x1;
+				mapStaEndPoint.staY = argSTMM->FAInput->mapLinesInfo[argSTMM->cntMapLine].y1;
+				mapStaEndPoint.endX = argSTMM->FAInput->mapLinesInfo[argSTMM->cntMapLine].x2;
+				mapStaEndPoint.endY = argSTMM->FAInput->mapLinesInfo[argSTMM->cntMapLine].y2;
+				scanStaEndPoint.staX = argSTMM->FAInput->scanLinesInfo[argSTMM->cntScanLine].x1;
+				scanStaEndPoint.staY = argSTMM->FAInput->scanLinesInfo[argSTMM->cntScanLine].y1;
+				scanStaEndPoint.endX = argSTMM->FAInput->scanLinesInfo[argSTMM->cntScanLine].x2;
+				scanStaEndPoint.endY = argSTMM->FAInput->scanLinesInfo[argSTMM->cntScanLine].y2;
+			}
+			else if (i == 2) {
+				mapStaEndPoint.staX = argSTMM->FAInput->mapLinesInfo[argSTMM->cntMapLine].x1;
+				mapStaEndPoint.staY = argSTMM->FAInput->mapLinesInfo[argSTMM->cntMapLine].y1;
+				mapStaEndPoint.endX = argSTMM->FAInput->mapLinesInfo[argSTMM->cntMapLine].x2;
+				mapStaEndPoint.endY = argSTMM->FAInput->mapLinesInfo[argSTMM->cntMapLine].y2;
+				scanStaEndPoint.staX = argSTMM->FAInput->scanLinesInfo[argSTMM->cntScanLine].x2;
+				scanStaEndPoint.staY = argSTMM->FAInput->scanLinesInfo[argSTMM->cntScanLine].y2;
+				scanStaEndPoint.endX = argSTMM->FAInput->scanLinesInfo[argSTMM->cntScanLine].x1;
+				scanStaEndPoint.endY = argSTMM->FAInput->scanLinesInfo[argSTMM->cntScanLine].y1;
+			}
+			else if (i == 3) {
+				mapStaEndPoint.staX = argSTMM->FAInput->mapLinesInfo[argSTMM->cntMapLine].x2;
+				mapStaEndPoint.staY = argSTMM->FAInput->mapLinesInfo[argSTMM->cntMapLine].y2;
+				mapStaEndPoint.endX = argSTMM->FAInput->mapLinesInfo[argSTMM->cntMapLine].x1;
+				mapStaEndPoint.endY = argSTMM->FAInput->mapLinesInfo[argSTMM->cntMapLine].y1;
+				scanStaEndPoint.staX = argSTMM->FAInput->scanLinesInfo[argSTMM->cntScanLine].x1;
+				scanStaEndPoint.staY = argSTMM->FAInput->scanLinesInfo[argSTMM->cntScanLine].y1;
+				scanStaEndPoint.endX = argSTMM->FAInput->scanLinesInfo[argSTMM->cntScanLine].x2;
+				scanStaEndPoint.endY = argSTMM->FAInput->scanLinesInfo[argSTMM->cntScanLine].y2;
+			}
+			else {
+				mapStaEndPoint.staX = argSTMM->FAInput->mapLinesInfo[argSTMM->cntMapLine].x2;
+				mapStaEndPoint.staY = argSTMM->FAInput->mapLinesInfo[argSTMM->cntMapLine].y2;
+				mapStaEndPoint.endX = argSTMM->FAInput->mapLinesInfo[argSTMM->cntMapLine].x1;
+				mapStaEndPoint.endY = argSTMM->FAInput->mapLinesInfo[argSTMM->cntMapLine].y1;
+				scanStaEndPoint.staX = argSTMM->FAInput->scanLinesInfo[argSTMM->cntScanLine].x2;
+				scanStaEndPoint.staY = argSTMM->FAInput->scanLinesInfo[argSTMM->cntScanLine].y2;
+				scanStaEndPoint.endX = argSTMM->FAInput->scanLinesInfo[argSTMM->cntScanLine].x1;
+				scanStaEndPoint.endY = argSTMM->FAInput->scanLinesInfo[argSTMM->cntScanLine].y1;
+			}
+
+			structPosition mapPose, scanPose;
+			mapPose.x = mapStaEndPoint.staX;
+			mapPose.y = mapStaEndPoint.staY;
+			mapPose.ang = NormalizedLineDirection(mapStaEndPoint);
+			scanPose.x = scanStaEndPoint.staX;
+			scanPose.y = scanStaEndPoint.staY;
+			scanPose.ang = NormalizedLineDirection(scanStaEndPoint);
+
+			structRotateScanIm RSI = rotateScanIm(argSTMM->FAInput, mapPose, scanPose);
+
+			structScore tempScore;
+			tempScore.pos = RSI.rotateLidarPos;
+			tempScore.score = CalcScore(argSTMM->FAInput, RSI);
+			free(RSI.rotateScanImPoint);
+
+			pthread_mutex_lock(&mutex);
+			argSTMM->Score->push_back(tempScore);
+			pthread_mutex_unlock(&mutex);
+		}
+		pthread_mutex_lock(&mutex);
+		num_done++;
+		pthread_mutex_unlock(&mutex);
+		free(argSTMM);
 	}
 
 	void ScanToMapMatch(structFAInput *FAInput, int cntMapLine, int cntScanLine, vector<structScore> *Score) {

@@ -1,4 +1,4 @@
-#pragma once
+#pragma comment(lib,"pthreadVC2.lib")  
 #ifndef _MYFA_
 #define _MYFA_
 
@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <threadpool.h>
 #include <baseFunc.h>
 
 using namespace cv;
@@ -44,7 +45,15 @@ namespace myfa {
 		double angDiff;
 	} structRotateScanIm;
 
+	typedef struct _structThreadSTMM {
+		structFAInput *FAInput;
+		int cntMapLine;
+		int cntScanLine;
+		vector<structScore> *Score;
+	} structThreadSTMM;
+
 	structScore FeatureAssociation(structFAInput *FAInput);
+	void thread_ScanToMapMatch(void *arg);
 	void ScanToMapMatch(structFAInput *FAInput, int cntMapLine, int cntScanLine, vector<structScore> *Score);
 	double NormalizedLineDirection(structStaEnd lineStaEnd);
 	structRotateScanIm rotateScanIm(structFAInput *FAInput, structPosition mapPose, structPosition scanPose);

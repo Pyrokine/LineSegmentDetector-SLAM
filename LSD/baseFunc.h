@@ -46,5 +46,10 @@ double sind(double x);
 double cosd(double x);
 double atand(double x);
 
+//createMapCache 参数
 const double z_occ_max_dis = 1;
+
+//ScanToMapMatch 多线程参数
+const int lenTHREAD = 25;
+const int lenQUEUE = 50;
 #endif // ! _BASEFUNC_

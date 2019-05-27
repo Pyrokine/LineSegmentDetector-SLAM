@@ -24,12 +24,14 @@
     <ClCompile Include="myFA.cpp" />
     <ClCompile Include="myLSD.cpp" />
     <ClCompile Include="myRDP.cpp" />
+    <ClCompile Include="threadpool.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="baseFunc.h" />
     <ClInclude Include="myFA.h" />
     <ClInclude Include="myLSD.h" />
     <ClInclude Include="myRDP.h" />
+    <ClInclude Include="threadpool.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
