@@ -11,7 +11,7 @@
 using namespace cv;
 using namespace std;
 
-myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, Mat mapCache);
+myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, Mat mapCache, structPosition lastPose);
 
 int main() {
 	clock_t time_start, time_end;
@@ -48,13 +48,20 @@ int main() {
 	Mat mapCache = mylsd::createMapCache(mapValue, mapParam.mapResol, z_occ_max_dis);
 
 	//LineSegmentDetector 提取地图边界直线信息
-	mylsd::structLSD LSD = mylsd::myLineSegmentDetector(mapValue, oriMapCol, oriMapRow, 0.3, 0.6, 22.5, 0.7, 1024);
-	Mat Display = LSD.lineIm.clone();
+	mylsd::structLSD LSD = mylsd::myLineSegmentDetector(mapValue, oriMapCol, oriMapRow, lsd_sca, lsd_sig, lsd_angThre, lsd_denThre, pseBin);
+	Mat mapValue = LSD.lineIm.clone();
 
 	//printf("%d %d\n", Display.size[0], Display.size[1]);
-	imshow("mapCache", mapCache);
-	imshow("Display", Display);
-	waitKey(0);
+	//imshow("mapCache", mapCache);
+	//imshow("Display", Display);
+	//waitKey(0);
+
+	//初始化运动过程
+	structPosition lastPose;
+	lastPose.x = -1;
+	lastPose.y = -1;
+	lastPose.ang = 0;
+
 
 	//读取雷达信息
 	path2 = path1 + "Lidar.txt";
@@ -84,23 +91,26 @@ int main() {
 		}
 		if (is_EOF == false) {
 			//匹配雷达特征到地图特征 返回像素坐标和真实坐标
-			myrdp::structFeatureScan FS = FeatureScan(mapParam, lidarPointPolar, len_lp, 3, 0.08, 0.5);
+			myrdp::structFeatureScan FS = FeatureScan(mapParam, lidarPointPolar, len_lp, rdp_leastPoint, rdp_threLine, rdp_leastDist);
 			
 			double estimatePose_realworld[3];
 			double estimatePose[3];
 			Mat poseAll;
-			myfa::structFAInput FAInput = trans2FA(FS, LSD, mapCache);
+			myfa::structFAInput FAInput = trans2FA(FS, LSD, mapCache, lastPose);
 			myfa::structScore FA = myfa::FeatureAssociation(&FAInput);
 
-			printf("%f %f %f\n\n", FA.pos.x, FA.pos.y, FA.pos.ang);
+			lastPose.x = FA.pos.x;
+			lastPose.y = FA.pos.y;
+			lastPose.ang = FA.pos.ang;
+			printf("%f %f %f %f\n\n", FA.pos.x, FA.pos.y, FA.pos.ang, FA.score);
 
 			//将图像坐标加入地图中
-			circle(Display, Point ((int)FA.pos.x, (int)FA.pos.y), 1, Scalar(255, 255, 255));
-			imshow("lineIm", Display);
+			circle(Display, Point((int)FA.pos.x, (int)FA.pos.y), 1, Scalar(255, 255, 255));
+			imshow("Display", Display);
 			waitKey(1);
 		}
 		else
-			destroyWindow("lineIm");
+			destroyWindow("Display");
 	}
 	fclose(fp);
 
@@ -113,7 +123,7 @@ int main() {
 	return 0;
 }
 
-myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, Mat mapCache) {
+myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, Mat mapCache, structPosition lastPose) {
 	//将数据格式转为FeatureAssociation格式
 	myfa::structFAInput FA;
 	int i;
@@ -149,6 +159,7 @@ myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, 
 	//printf("x:%lf y:%lf\n", FS.lidarPos.x, FS.lidarPos.y);
 	FA.mapCache = mapCache;
 	FA.scanImPoint = FS.scanImPoint;
+	FA.lastPose = lastPose;
 
 	return FA;
 }

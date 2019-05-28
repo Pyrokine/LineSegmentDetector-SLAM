@@ -39,6 +39,7 @@ namespace myfa {
 		vector<structPosition> scanImPoint;
 		int lidarPos[2];
 		Mat mapCache;
+		structPosition lastPose;
 	} structFAInput;
 
 	typedef struct _structScore {

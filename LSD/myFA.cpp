@@ -58,18 +58,21 @@ namespace myfa {
 				pthread_mutex_unlock(&mutex);
 			}
 		}
-		//等待所有任务结束并销毁线程（已知BUG：有一个任务可能不结束）
+		//等待所有任务结束并销毁线程（已知BUG：可能有一个任务不正常结束）
 		//可以增加等待时间以结束等待
 		while (num_tasks - num_done > 1);
 		threadpool_destroy(pool, 0);
 
 		int lenScore = 0;
 		structScore *poseAll;
-		structScore poseBase;
-		//判断是否有匹配结果，不存在则创建新的马尔科夫链
+		structScore poseEstimate;
+		//判断是否有匹配结果，不存在则创建新的隐马尔科夫链
 		if (Score.empty()) {
-			
-			return poseBase;
+			poseEstimate.pos.x = -1;
+			poseEstimate.pos.y = -1;
+			poseEstimate.pos.ang = 0;
+			poseEstimate.score = INFINITY;
+			return poseEstimate;
 		}
 		else {
 			lenScore = (int)Score.size();
@@ -78,11 +81,63 @@ namespace myfa {
 		}
 		//确定Scorre最低的结果为第一次匹配的基准点
 		qsort(poseAll, lenScore, sizeof(structScore), CompScore);
-		poseBase = poseAll[0];
-		printf("Score:%f\n", poseBase.score);
 
+		//处理隐马尔科夫链第一帧
+		if (abs(FAInput->lastPose.x + 1) < 0.0001) {
+			poseEstimate = poseAll[0];
+			return poseEstimate;
+		}
+
+		//隐马尔科夫链中间帧
+		double scaThre = 0;
+		int cntPoseAll = 0, lenPoseSimilar = 0;
+		vector<structScore> poseSimilar;
+		//以10%的步进从小到大筛选Score
+		for (scaThre = 0; scaThre <= 0.8; scaThre += 0.1) {
+			for (cntPoseAll = (int)(scaThre * lenScore); cntPoseAll < (int)((scaThre + 0.1) * lenScore); cntPoseAll++) {
+				//排除掉INF的socre
+				if (poseAll[cntPoseAll].score < INFINITY) {
+					//仅提取距离maxEstiDist像素以内的候选点
+					if (sqrt(pow(poseAll[cntPoseAll].pos.x - FAInput->lastPose.x, 2) + pow(poseAll[cntPoseAll].pos.y - FAInput->lastPose.y, 2)) < maxEstiDist) {
+						poseSimilar.push_back(poseAll[cntPoseAll]);
+					}
+				}
+			}
+			if (poseSimilar.size() > lenCandidate)
+				break;
+		}
+
+		lenPoseSimilar = poseSimilar.size();
+		//无匹配结果，生成新的隐马尔科夫链
+		if (lenPoseSimilar == 0) {
+			poseEstimate.pos.x = -1;
+			poseEstimate.pos.y = -1;
+			poseEstimate.pos.ang = 0;
+			poseEstimate.score = INFINITY;
+			return poseEstimate;
+		}
+
+		//对匹配结果加权求均值
+		double sumX = 0, sumY = 0, sumAngle = 0, sumScore = 0;
+		int cnt;
+		for (cnt = 0; cnt < lenPoseSimilar; cnt++) {
+			double thisScore = 1 / pow(poseSimilar[cnt].score, 2);
+			sumX += poseSimilar[cnt].pos.x * thisScore;
+			sumY += poseSimilar[cnt].pos.y * thisScore;
+			sumAngle += poseSimilar[cnt].pos.ang * thisScore;
+			sumScore += thisScore;
+		}
+		poseEstimate.pos.x = sumX / sumScore;
+		poseEstimate.pos.y = sumY / sumScore;
+		poseEstimate.pos.ang = sumAngle / sumScore;
+		poseEstimate.score = 1 / sqrt(sumScore / lenPoseSimilar);
+
+
+		//printf("Score:%f\n", poseEstimate.score);
+
+		poseEstimate.next = NULL;
 		free(poseAll);
-		return poseBase;
+		return poseEstimate;
 	}
 
 	void thread_ScanToMapMatch(void *arg) {
