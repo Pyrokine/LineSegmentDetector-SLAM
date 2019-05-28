@@ -1,3 +1,23 @@
+/////////////////////////////////////////////////////////////////////////
+//@Copyright(C) Pyrokine
+//All rights reserved
+//博客 http://www.cnblogs.com/Pyrokine/
+//Github https://github.com/Pyrokine
+//创建日期 20190528
+//版本 1.2
+//**********************************************************************
+//V1.0
+//实现了FetureAssociation的基本算法
+//
+//V1.1
+//增加注释量，将RDP点云的提取修改到RDP算法中提取，简化计算量
+//
+//V1.2
+//对计算Score过程增加了基于pthread的线程池，引用自
+//https://github.com/mbrossard/threadpool
+//
+//
+/////////////////////////////////////////////////////////////////////////
 #pragma comment(lib,"pthreadVC2.lib")  
 #ifndef _MYFA_
 #define _MYFA_
@@ -19,10 +39,6 @@ namespace myfa {
 		vector<structPosition> scanImPoint;
 		int lidarPos[2];
 		Mat mapCache;
-		Mat scanIm;
-		Mat mapIm;
-		//vector<double> ScanRanges;
-		//vector<double> ScanAngles;
 	} structFAInput;
 
 	typedef struct _structScore {

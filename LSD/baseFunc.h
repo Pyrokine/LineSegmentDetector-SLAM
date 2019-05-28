@@ -46,10 +46,22 @@ double sind(double x);
 double cosd(double x);
 double atand(double x);
 
-//createMapCache 参数
+/////////////////////////////////////////////////////////////////////////
+// main_on_windows.cpp
+// createMapCache 参数
 const double z_occ_max_dis = 1;
+// 激光雷达每圈激光点数
+const int pointPerLoop = 360;
 
-//ScanToMapMatch 多线程参数
-const int lenTHREAD = 25;
+
+/////////////////////////////////////////////////////////////////////////
+// myFA.cpp
+// ScanToMapMatch 多线程参数
+const int numTHREAD = 25;
 const int lenQUEUE = 50;
+// scanLine 忽略长度
+const int ignoreScanLength = 40;
+// scanLine 和 mapLine 长度差阈值，取值范围0~1
+const double scanToMapDiff = 0.35;
+/////////////////////////////////////////////////////////////////////////
 #endif // ! _BASEFUNC_

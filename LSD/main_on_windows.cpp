@@ -11,10 +11,7 @@
 using namespace cv;
 using namespace std;
 
-myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, structMapParam oriMapParam, \
-	myrdp::structLidarPointPolar *lidarPointPolar, int len_lp, Mat mapCache, double z_occ_max_dist);
-
-int nframe = 99, pointPerLoop = 360;
+myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, Mat mapCache);
 
 int main() {
 	clock_t time_start, time_end;
@@ -48,7 +45,6 @@ int main() {
 	//waitKey(1);
 
 	//计算mapCache，用于特征匹配的先验概率
-	
 	Mat mapCache = mylsd::createMapCache(mapValue, mapParam.mapResol, z_occ_max_dis);
 
 	//LineSegmentDetector 提取地图边界直线信息
@@ -93,14 +89,12 @@ int main() {
 			double estimatePose_realworld[3];
 			double estimatePose[3];
 			Mat poseAll;
-			myfa::structFAInput FAInput = trans2FA(FS, LSD, mapParam, lidarPointPolar, len_lp, mapCache, z_occ_max_dis);
+			myfa::structFAInput FAInput = trans2FA(FS, LSD, mapCache);
 			myfa::structScore FA = myfa::FeatureAssociation(&FAInput);
-			//myfa::FeatureAssociation(FS.lineIm, FAInput.scanLinesInfo, FAInput.mapLinesInfo, mapParam, FAInput.lidarPos, LSD.lineIm, \
-				//mapCache, mapValue, FAInput.ScanRanges, FAInput.ScanAngles, estimatePose_realworld, estimatePose, poseAll);
+
 			printf("%f %f %f\n\n", FA.pos.x, FA.pos.y, FA.pos.ang);
 
 			//将图像坐标加入地图中
-			//Display.ptr<uint8_t>((int)FA.pos.y)[(int)FA.pos.x] = 255;
 			circle(Display, Point ((int)FA.pos.x, (int)FA.pos.y), 1, Scalar(255, 255, 255));
 			imshow("lineIm", Display);
 			waitKey(1);
@@ -119,8 +113,7 @@ int main() {
 	return 0;
 }
 
-myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, structMapParam oriMapParam,\
-	myrdp::structLidarPointPolar *lidarPointPolar, int len_lp, Mat mapCache, double z_occ_max_dist) {
+myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, Mat mapCache) {
 	//将数据格式转为FeatureAssociation格式
 	myfa::structFAInput FA;
 	int i;
@@ -155,14 +148,8 @@ myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, 
 	FA.lidarPos[1] = (int)round(FS.lidarPos.y);
 	//printf("x:%lf y:%lf\n", FS.lidarPos.x, FS.lidarPos.y);
 	FA.mapCache = mapCache;
-	FA.scanIm = FS.lineIm;
-	FA.mapIm = LSD.lineIm;
 	FA.scanImPoint = FS.scanImPoint;
-	//ScanRanges ScanAngles
-	//for (i = 0; i < len_lp; i++) {
-	//	FA.ScanRanges.push_back(lidarPointPolar[i].range);
-	//	FA.ScanAngles.push_back(lidarPointPolar[i].angle);
-	//}
+
 	return FA;
 }
 
