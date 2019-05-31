@@ -5,13 +5,13 @@
 #include <myLSD.h>
 #include <myRDP.h>
 #include <myFA.h>
-//#include <FeatureAssociation.h>
 #include <baseFunc.h>
 
 using namespace cv;
 using namespace std;
 
-myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, Mat mapCache, structPosition lastPose);
+myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, Mat mapCache, structPosition lastPose,\
+	Eigen::Matrix<double, 9, 1> kalman_x, Eigen::Matrix<double, 9, 9> kalman_P, structPosition ScanPose, Mat Display);
 
 int main() {
 	clock_t time_start, time_end;
@@ -19,6 +19,7 @@ int main() {
 	//路径
 	//string path1 = "../line_data/data0/";
 	string path1 = "../data_20190523/data/";
+	//string path1 = "../data_20190514/data_f4key/data4/";
 	string path2;
 	const char *path;
 	//读取mapParam 地图信息
@@ -44,12 +45,29 @@ int main() {
 	//imshow("1", mapValue);
 	//waitKey(1);
 
+	//读取Odometry 里程计数据
+	vector<structPosition> Odom;
+	path2 = path1 + "Odom.txt";
+	path = path2.data();
+	fp = fopen(path, "r");
+	while (!feof(fp)) {
+		structPosition tempOdom;
+		fscanf(fp, "%lf %lf %lf", &tempOdom.x, &tempOdom.y, &tempOdom.ang);
+		Odom.push_back(tempOdom);
+	}
+	fclose(fp);
+	Odom[0].x = 0;
+	//for (cnt_row = 0; cnt_row < Odom.size(); cnt_row++) {
+	//	printf("%d : %f %f %f\n", cnt_row, Odom[cnt_row].x, Odom[cnt_row].y, Odom[cnt_row].ang);
+	//}
+
 	//计算mapCache，用于特征匹配的先验概率
-	Mat mapCache = mylsd::createMapCache(mapValue, mapParam.mapResol, z_occ_max_dis);
+	Mat mapCache = mylsd::createMapCache(mapValue, mapParam.mapResol);
 
 	//LineSegmentDetector 提取地图边界直线信息
 	mylsd::structLSD LSD = mylsd::myLineSegmentDetector(mapValue, oriMapCol, oriMapRow, lsd_sca, lsd_sig, lsd_angThre, lsd_denThre, pseBin);
-	Mat mapValue = LSD.lineIm.clone();
+	Mat Display = mapValue.clone();
+	resize(Display, Display, Size(0, 0), 0.5, 0.5);
 
 	//printf("%d %d\n", Display.size[0], Display.size[1]);
 	//imshow("mapCache", mapCache);
@@ -61,18 +79,31 @@ int main() {
 	lastPose.x = -1;
 	lastPose.y = -1;
 	lastPose.ang = 0;
-
+	Eigen::Matrix<double, 9, 1> kalman_x;
+	Eigen::Matrix<double, 9, 9> kalman_P;
+	kalman_x << -1, -1, 0, 0, 0, 0, 0, 0, 0;
+	kalman_P << 100, 0, 0, 0, 0, 0, 0, 0, 0,
+				0, 100, 0, 0, 0, 0, 0, 0, 0,
+				0, 0, 100, 0, 0, 0, 0, 0, 0,
+				0, 0, 0, 1, 0, 0, 0, 0, 0,
+				0, 0, 0, 0, 1, 0, 0, 0, 0,
+				0, 0, 0, 0, 0, 1, 0, 0, 0,
+				0, 0, 0, 0, 0, 0, 0.1, 0, 0,
+				0, 0, 0, 0, 0, 0, 0, 0.1, 0,
+				0, 0, 0, 0, 0, 0, 0, 0, 0.1;
 
 	//读取雷达信息
 	path2 = path1 + "Lidar.txt";
 	path = path2.data();
 	fp = fopen(path, "r");
-	int i = 0, len_lp = 0, cnt_frame = 1;
+	int i = 0, len_lp = 0, cnt_frame = 0;
+	bool is_offset = false;
 	myrdp::structLidarPointPolar lidarPointPolar[360];
+	vector<double> angRotate;
 	while (!feof(fp)) {
 		len_lp = 0;
 		bool is_EOF = false;
-		printf("第%d帧:\n", cnt_frame++);
+		printf("第%d帧:\n", ++cnt_frame);
 		//每帧最多360帧数据 循环读取（输入）
 		for (i = 0; i < pointPerLoop; i++) {
 			double val1, val2;
@@ -92,38 +123,77 @@ int main() {
 		if (is_EOF == false) {
 			//匹配雷达特征到地图特征 返回像素坐标和真实坐标
 			myrdp::structFeatureScan FS = FeatureScan(mapParam, lidarPointPolar, len_lp, rdp_leastPoint, rdp_threLine, rdp_leastDist);
+			//imshow("RDP", FS.lineIm);
 			
-			double estimatePose_realworld[3];
-			double estimatePose[3];
-			Mat poseAll;
-			myfa::structFAInput FAInput = trans2FA(FS, LSD, mapCache, lastPose);
-			myfa::structScore FA = myfa::FeatureAssociation(&FAInput);
+			//Mat poseAll;
 
-			lastPose.x = FA.pos.x;
-			lastPose.y = FA.pos.y;
-			lastPose.ang = FA.pos.ang;
-			printf("%f %f %f %f\n\n", FA.pos.x, FA.pos.y, FA.pos.ang, FA.score);
+			structPosition ScanPose;
+			double theta = 0;
+			if (abs(kalman_x(0) + 1) < 0.0001) {
+				ScanPose.x = 0;
+				ScanPose.y = 0;
+				ScanPose.ang = 0;
+			}
+			else {
+				int cnt;
+				for (cnt = 0; cnt < angRotate.size(); cnt++) {
+					theta += angRotate[cnt];
+				}
+				theta /= angRotate.size();
+
+				structPosition tempScanPose;
+				tempScanPose.x = (Odom[cnt_frame].x - Odom[cnt_frame - 1].x) / mapParam.mapResol;
+				tempScanPose.y = (Odom[cnt_frame].y - Odom[cnt_frame - 1].y) / mapParam.mapResol;
+				tempScanPose.ang = atand(Odom[cnt_frame].ang - Odom[cnt_frame - 1].ang);
+				ScanPose.x = tempScanPose.x * cosd(theta) - tempScanPose.y * sind(theta);
+				ScanPose.y = tempScanPose.y * sind(theta) + tempScanPose.y * cosd(theta);
+				ScanPose.ang = tempScanPose.ang;
+			}
+
+			myfa::structFAInput FAInput = trans2FA(FS, LSD, mapCache, lastPose, kalman_x, kalman_P, ScanPose, Display);
+			myfa::structFAOutput FA = myfa::FeatureAssociation(&FAInput);
+
+			kalman_x = FA.kalman_x;
+			kalman_P = FA.kalman_P;
+			lastPose.x = FA.kalman_x(0);
+			lastPose.y = FA.kalman_x(1);
+			lastPose.ang = FA.kalman_x(2);
+			printf("x:%f y:%f theta:%f\n\n", kalman_x(0), kalman_x(1), theta);
+
+			double angDiff = FA.kalman_x(2) - atand(Odom[cnt_frame].ang);
+			if (abs(angDiff) > 90 && cnt_frame == 1)
+				is_offset = true;
+			if (is_offset == true) {
+				if (angDiff < 0)
+					angDiff += 360;
+			}
+			angRotate.push_back(angDiff);
 
 			//将图像坐标加入地图中
-			circle(Display, Point((int)FA.pos.x, (int)FA.pos.y), 1, Scalar(255, 255, 255));
+			circle(Display, Point((int)kalman_x(0) / 2, (int)kalman_x(1) / 2), 2, Scalar(255, 255, 255));
+			//line(Display, Point((int)kalman_x(0), (int)kalman_x(1)), Point((int)kalman_x(0) + ScanPose.x, (int)kalman_x(1) + ScanPose.y), Scalar(255, 255, 255));
 			imshow("Display", Display);
 			waitKey(1);
 		}
 		else
 			destroyWindow("Display");
+
+		if (cnt_frame >= Odom.size() - 1)
+			break;
 	}
 	fclose(fp);
 
-	imshow("MapGray", mapValue);
+	//imshow("MapGray", mapValue);
 	time_end = clock();
 	printf("time = %lf\n", (double)(time_end - time_start) / CLOCKS_PER_SEC);
-	imshow("lineIm", Display);
+	imshow("lineIm", LSD.lineIm);
 	waitKey(0);
 	destroyAllWindows();
 	return 0;
 }
 
-myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, Mat mapCache, structPosition lastPose) {
+myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, Mat mapCache, structPosition lastPose,\
+	Eigen::Matrix<double, 9, 1> kalman_x, Eigen::Matrix<double, 9, 9> kalman_P, structPosition ScanPose, Mat Display) {
 	//将数据格式转为FeatureAssociation格式
 	myfa::structFAInput FA;
 	int i;
@@ -154,12 +224,16 @@ myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, 
 		FA.mapLinesInfo[i].len = LSD.linesInfo[i].len;
 	}
 	//lidarPos
-	FA.lidarPos[0] = (int)round(FS.lidarPos.x);
-	FA.lidarPos[1] = (int)round(FS.lidarPos.y);
+	FA.lidarPose.x = (int)round(FS.lidarPos.x);
+	FA.lidarPose.y = (int)round(FS.lidarPos.y);
 	//printf("x:%lf y:%lf\n", FS.lidarPos.x, FS.lidarPos.y);
-	FA.mapCache = mapCache;
 	FA.scanImPoint = FS.scanImPoint;
+	FA.mapCache = mapCache;
 	FA.lastPose = lastPose;
+	FA.kalman_x = kalman_x;
+	FA.kalman_P = kalman_P;
+	FA.ScanPose = ScanPose;
+	FA.Display = Display;
 
 	return FA;
 }

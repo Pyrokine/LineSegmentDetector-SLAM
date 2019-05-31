@@ -18,6 +18,10 @@
 
 #define debugMode
 
+//必须所有自建的命名空间内都包含这个库 不管是否使用
+#include <Eigen/Core>
+#include <Eigen/Dense>
+
 typedef struct _structMapParam {
 	int oriMapCol;
 	int oriMapRow;
@@ -70,11 +74,11 @@ const double rdp_leastDist = 0.5; //提取线段的最短长度，默认0.5
 //                            myFA.cpp
 //**********************************************************************
 // ScanToMapMatch 多线程参数
-const int numTHREAD = 25;
+const int numTHREAD = 30;
 const int lenQUEUE = 50;
 // scanLine 忽略长度，默认40，单位:像素
 const int ignoreScanLength = 40;
-// scanLine 和 mapLine 长度差阈值，取值范围0~1，默认0.35
+// scanLine 和 mapLine 长度差比例阈值，取值范围0~1，默认0.35
 const double scanToMapDiff = 0.35;
 // 加权匹配候选点数量
 const int lenCandidate = 30;

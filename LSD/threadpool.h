@@ -25,9 +25,13 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
+#pragma comment(lib,"pthreadVC2.lib")
 #ifndef _THREADPOOL_H_
 #define _THREADPOOL_H_
+
+#if defined(_MSC_VER) && _MSC_VER >= 1900 && !defined(_CRT_NO_TIME_T)
+#define _TIMESPEC_DEFINED
+#endif
 
 #include <stdlib.h>
 #include <pthread.h>

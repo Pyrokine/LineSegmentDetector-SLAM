@@ -8,7 +8,7 @@ namespace mylsd {
 	structRec *recSaveDisp;
 	const double pi = 4.0 * atan(1.0);
 
-	Mat createMapCache(Mat MapGray, double res, double z_occ_max_dis) {
+	Mat createMapCache(Mat MapGray, double res) {
 		//计算图中点到最近点的最小距离，在特征匹配时用作先验概率
 		int cell_radius = (int)floor(z_occ_max_dis / res);
 		int height = MapGray.rows, width = MapGray.cols;
@@ -122,6 +122,7 @@ namespace mylsd {
 			}
 			now = now->next;
 		}
+
 		return mapCache;
 	}
 

@@ -1,5 +1,5 @@
-# LineSegmentDetector17
-基于C+CPP+OpenCV4.0实现，以C为主，OpenCV向下兼容3.0，编译环境为VS17，可以自行建立项目，mapValue是地图文件，mapParam是地图信息，其他为调试用文件
+# LineSegmentDetector-SLAM
+基于C + CPP + OpenCV4.0 + Eigen3 + pthread实现的LineSegmentDetector定位算法，地图由Karto-Slam构建，OpenCV向下兼容3.0，编译环境为VS19，需要自行建立项目，Windows下主程序为main_on_windows.cpp
 
 LSD算法解释https://www.cnblogs.com/Pyrokine/p/10384930.html
 
@@ -20,3 +20,11 @@ V2.0 提取出了LSD和RDP算法到单独文件并可独立调用，新增Base_F
 V2.1 在myLSD中增加了mapCache的计算，用于特征匹配的先验概率，修正了LSD计算时的原始图像，清除了地图中间值为255的部分
 
 V2.2 增加了main_on_linux入口，用于ROS使用，具体方法见前面博客，修改main_no_disp为main_on_windows，增加一组数据，以map1结尾，mapParam共用，mapValue有map1和map2
+
+V2.3 修复了bug，简化了计算RDP像素点方式，加速了运算速度
+
+V2.4 在特征匹配myFA中增加了基于pthread的线程池，极大地提高了计算速度
+
+V2.5 增加隐马尔可夫链
+
+V2.6 融合了里程计数据，增加了基于Eigen3的无迹卡尔曼滤波UKF，修复了一些已知的bug

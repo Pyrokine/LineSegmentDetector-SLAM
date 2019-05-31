@@ -12,6 +12,6 @@ double cosd(double x) {
 }
 
 double atand(double x) {
-	return atan(x / 180.0 * pi);
+	return atan(x) * 180.0 / pi;
 }
 
