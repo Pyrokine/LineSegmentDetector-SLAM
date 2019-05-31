@@ -83,7 +83,7 @@ namespace mylsd {
 				}
 			}
 
-			if (cur_i >= 1 && mapFlag.ptr<double>(cur_i + 1)[cur_j] == 0) {
+			if (cur_i < height - 1 && mapFlag.ptr<double>(cur_i + 1)[cur_j] == 0) {
 				double di = abs(cur_i - src_i);
 				double dj = abs(cur_j - src_j);
 				double distance = sqrt(di * di + dj * dj);
@@ -102,7 +102,7 @@ namespace mylsd {
 				}
 			}
 
-			if (cur_j >= 1 && mapFlag.ptr<double>(cur_i)[cur_j + 1] == 0) {
+			if (cur_j < width - 1 && mapFlag.ptr<double>(cur_i)[cur_j + 1] == 0) {
 				double di = abs(cur_i - src_i);
 				double dj = abs(cur_j - src_j);
 				double distance = sqrt(di * di + dj * dj);

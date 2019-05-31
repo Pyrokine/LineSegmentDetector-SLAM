@@ -19,7 +19,9 @@ int main() {
 	//路径
 	//string path1 = "../line_data/data0/";
 	string path1 = "../data_20190523/data/";
-	//string path1 = "../data_20190514/data_f4key/data4/";
+	//string path1 = "../data_20190514/data_f4key/data10/";
+	//string path1 = "../data_20190513/data_f3key/data9/";
+	//string path1 = "../line_data/data9/";
 	string path2;
 	const char *path;
 	//读取mapParam 地图信息
@@ -186,7 +188,7 @@ int main() {
 	//imshow("MapGray", mapValue);
 	time_end = clock();
 	printf("time = %lf\n", (double)(time_end - time_start) / CLOCKS_PER_SEC);
-	imshow("lineIm", LSD.lineIm);
+	//imshow("lineIm", LSD.lineIm);
 	waitKey(0);
 	destroyAllWindows();
 	return 0;
