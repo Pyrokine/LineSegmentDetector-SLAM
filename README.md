@@ -7,6 +7,14 @@ LSD算法动画https://www.bilibili.com/video/av43174965/
 
 LSD在ROS下使用https://www.cnblogs.com/Pyrokine/p/10730995.html
 
+OpenCV4.0下载链接：https://opencv.org/releases/
+
+Eigen3下载链接：http://eigen.tuxfamily.org/index.php?title=Main_Page
+
+pthread-win32下载链接：ftp://sourceware.org/pub/pthreads-win32/
+
+更新日志：
+
 V1.0 完成了基本算法的实现以及基础动画的实现
 
 V1.1 完成了算法的优化， 将多个定长数组用动态数组实现，极大地减小了内存空间，将原算法的伪排序使用快速排序实现，优化了高斯降采样时计算高斯核的算法，改进后一张图仅需计算一次高斯核，所以将区域增长次数从多次减少到1次
