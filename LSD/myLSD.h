@@ -36,7 +36,9 @@
 #include <math.h>
 #include <fstream>
 #include <baseFunc.h>
+
 using namespace cv;
+using namespace std;
 
 namespace mylsd {
 	class LSD {
@@ -47,9 +49,10 @@ namespace mylsd {
 			int len_linesInfo;
 		} structLSD;
 
-		structLSD myLineSegmentDetector(Mat& MapGray, const int oriMapCol, const int oriMapRow, const double sca, const double sig,
-			const double angThre, const double denThre, const int pseBin);
+		structLSD myLineSegmentDetector(Mat& MapGray, const int _oriMapCol, const int _oriMapRow, const double _sca, const double _sig,
+			const double _angThre, const double _denThre, const int _pseBin);
 		Mat createMapCache(Mat MapGray, double res);
+
 	private:
 		typedef struct _nodeBinCell {
 			int value;
@@ -57,29 +60,23 @@ namespace mylsd {
 			int y;
 		} nodeBinCell;
 
-		typedef struct _structPts {
-			int x;
-			int y;
-			struct _structPts* next;
-		}structPts;
-
 		typedef struct _structCache {
 			int src_i;
 			int src_j;
 			int cur_i;
 			int cur_j;
 			struct _structCache* next;
-		}structCache;
+		} structCache;
 
 		typedef struct _structReg {
 			int x;
 			int y;
 			int num;
 			double deg;
-			int* regPts_x;
-			int* regPts_y;
+			vector<int> regPts_x;
+			vector<int> regPts_y;
 			struct _structReg* next;
-		}structReg;
+		} structReg;
 
 		typedef struct _structRegionGrower {
 			Mat curMap;
@@ -140,17 +137,20 @@ namespace mylsd {
 
 		structRec* recSaveDisp;
 		
-		const double pi = 4.0 * atan(1.0), pi2 = 2 * pi;
+		const double pi = 4.0 * atan(1.0), pi1_5 = 1.5 * pi, pi2 = 2 * pi;
 		int oriMapCol, oriMapRow, newMapCol, newMapRow;
 		double sca, sig, pseBin, logNT, aliPro;
 		double angThre, denThre, gradThre, regThre;
+		double coefA = 0.1066 * logNT + 2.6750;
+		double coefB = 0.004120 * logNT - 0.6223;
+		double coefC = -0.002607 * logNT + 0.1550;
 		Mat usedMap, degMap, magMap;
 
 		Mat GaussianSampler(Mat image, double sca, double sig);
-		structRegionGrower RegionGrower(int x, int y, double regDeg, double degThre);
+		structRegionGrower RegionGrower(const int x, const int y, double regDeg, const double degThre);
 		structRec RectangleConverter(const structReg reg, const double degThre);
-		structCenterGetter CenterGetter(const int regNum, const int* regX, const int* regY);
-		double OrientationGetter(const structReg reg, const double cenX, const double cenY, const int* regX, const int* regY, const double degThre);
+		structCenterGetter CenterGetter(const int regNum, const vector<int> regX, const vector<int> regY);
+		double OrientationGetter(const structReg reg, const double cenX, const double cenY, const vector<int> regX, const vector<int> regY, const double degThre);
 		structRefiner Refiner(structReg reg, structRec rec, Mat curMap);
 		double RectangleNFACalculator(structRec rec);
 		structRegionRadiusReducer RegionRadiusReducer(structReg reg, structRec rec, Mat curMap);

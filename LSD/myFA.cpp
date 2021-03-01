@@ -370,7 +370,7 @@ namespace myfa {
 			//printf("%f %f\n", RSI.rotateScanImPoint[cnt].y, RSI.rotateScanImPoint[cnt].x);
 			if (y >= 0 && y < FAInput->mapCache.size[0] && x >= 0 && x < FAInput->mapCache.size[1]) {
 				numValidPoint += 1;
-				if (FAInput->mapCache.ptr<double>(y)[x] >= z_occ_max_dis)
+				if (FAInput->mapCache.ptr<float>(y)[x] >= z_occ_max_dis)
 				{
 					//提高权重，惩罚Max像素
 					sumMaxDist += 10;

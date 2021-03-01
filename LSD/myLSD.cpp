@@ -6,7 +6,7 @@ using namespace std;
 namespace mylsd {
 	// LineSegmentDetector
 	LSD::structLSD LSD::myLineSegmentDetector(Mat& MapGray, const int _oriMapCol, const int _oriMapRow, const double _sca, const double _sig,
-			const double _angThre, const double _denThre, const int _pseBin) {
+			const double _angThre, const double _denThre, const int _pseBin){
 		oriMapCol = _oriMapCol, oriMapRow = _oriMapRow;
 		sca = _sca, sig = _sig, angThre = _angThre, denThre = _denThre, pseBin = _pseBin;
 
@@ -29,11 +29,11 @@ namespace mylsd {
 #endif
 
 		// 图像缩放——高斯降采样
-		last_time = clock();
+		//last_time = clock();
 		//Mat GaussImage = GaussianSampler(MapGray, sca, sig); // 这个返回的是double型，同时可以自由设定缩放比例
 		Mat GaussImage;
 		pyrDown(MapGray, GaussImage, Size(oriMapCol / 2.0, oriMapRow / 2.0)); // 图像金字塔
-		printf("0 %lf\n", (clock() - last_time) / CLOCKS_PER_SEC);
+		//printf("01 %lf\n", (clock() - last_time) / CLOCKS_PER_SEC);
 
 #ifdef drawPicture
 		imshow("GaussImage", GaussImage);
@@ -41,15 +41,15 @@ namespace mylsd {
 #endif
 
 		usedMap = Mat::zeros(newMapRow, newMapCol, CV_8UC1);//记录像素点状态
-		degMap = Mat::zeros(newMapRow, newMapCol, CV_64FC1);//level-line场方向
-		magMap = Mat::zeros(newMapRow, newMapCol, CV_64FC1);//记录每点的梯度
+		degMap = Mat::zeros(newMapRow, newMapCol, CV_32FC1);//level-line场方向
+		magMap = Mat::zeros(newMapRow, newMapCol, CV_32FC1);//记录每点的梯度
 		double degThre = angThre / 180.0 * pi; // 角度阈值
 		gradThre = 2.0 / sin(degThre); // 梯度阈值
 
 		// 计算梯度和level-line场方向并储存梯度到容器
-		last_time = clock();
+		//last_time = clock();
 		vector<nodeBinCell> binCell;
-		double maxGrad = 0, gradX, gradY, valueMagnitude, valueDegree, A, B, C, D;;
+		double maxGrad = 0, gradX, gradY, valueMagnitude, valueDegree, A, B, C, D;
 		for (int y = 1; y < newMapRow; y++) {
 			for (int x = 1; x < newMapCol; x++) {
 				A = GaussImage.ptr<uint8_t>(y)[x];
@@ -60,7 +60,7 @@ namespace mylsd {
 				gradY = (C + D - A - B) / 2.0;
 
 				valueMagnitude = sqrt(pow(gradX, 2) + pow(gradY, 2));
-				magMap.ptr<double>(y)[x] = valueMagnitude;
+				magMap.ptr<float>(y)[x] = valueMagnitude;
 
 				if (valueMagnitude < gradThre)
 					usedMap.ptr<uint8_t>(y)[x] = 1;
@@ -70,7 +70,7 @@ namespace mylsd {
 				valueDegree = atan2(abs(gradX), abs(gradY));
 				if (abs(valueDegree - pi) < 0.000001)
 					valueDegree = 0;
-				degMap.ptr<double>(y)[x] = valueDegree;
+				degMap.ptr<float>(y)[x] = valueDegree;
 
 				nodeBinCell tempNode;
 				tempNode.value = valueMagnitude;
@@ -87,19 +87,19 @@ namespace mylsd {
 		//waitKey(0);
 #endif 
 
-		printf("0 %lf\n", (clock() - last_time) / CLOCKS_PER_SEC);
+		//printf("02 %lf\n", (clock() - last_time) / CLOCKS_PER_SEC);
 
 		// 梯度值从大到小排序
-		last_time = clock();
+		//last_time = clock();
 		sort(binCell.begin(), binCell.end(), compVector());
-		printf("0 %lf\n", (clock() - last_time) / CLOCKS_PER_SEC);
+		//printf("03 %lf\n", (clock() - last_time) / CLOCKS_PER_SEC);
 
-		//按照排序顺序 依次搜索种子像素
+		// 按照排序顺序 依次搜索种子像素
 		logNT = 5.0 * (log10(newMapRow) + log10(newMapCol)) / 2.0;//测试数量的对数值
 		regThre = -logNT / log10(angThre / 180.0); //小区域的阈值
 		aliPro = angThre / 180.0;
 
-		//记录生长区域和矩形
+		// 记录生长区域和矩形
 		structRec* recSaveHead = (structRec*)malloc(sizeof(structRec));
 		structRec* recSaveNow = recSaveHead;
 
@@ -108,10 +108,10 @@ namespace mylsd {
 		Mat lineImColor = Mat::zeros(oriMapRow, oriMapCol, CV_8UC3);//记录直线图像
 #endif 
 		
-		printf("1 %lf\n", (clock() - last_time2) / CLOCKS_PER_SEC);
-		last_time2 = clock();
+		//printf("1 %lf\n", (clock() - last_time2) / CLOCKS_PER_SEC);
+		//last_time2 = clock();
 
-		//从最大梯度开始增长
+		// 从最大梯度开始增长
 		double t1 = 0, t2 = 0, t3 = 0, t4 = 0, t5 = 0;
 		int regCnt = 0;
 		for (int i = 0; i < binCell.size(); i++) {
@@ -120,32 +120,32 @@ namespace mylsd {
 			if (usedMap.ptr<uint8_t>(yIdx)[xIdx] != 0)
 				continue;
 
-			//区域增长 返回curMap和reg
-			last_time = clock();
-			structRegionGrower RG = RegionGrower(xIdx, yIdx, degMap.ptr<double>(yIdx)[xIdx], degThre);
-			t1 += clock() - last_time;
+			// 区域增长 返回curMap和reg
+			//last_time = clock();
+			structRegionGrower RG = RegionGrower(xIdx, yIdx, degMap.ptr<float>(yIdx)[xIdx], degThre);
+			//t1 += clock() - last_time;
 
 			structReg reg = RG.reg;
-			//删除小区域
+			// 删除小区域
 			if (reg.num < regThre)
 				continue;
 
-			//矩阵近似 返回rec
-			last_time = clock();
+			// 矩阵近似 返回rec
+			//last_time = clock();
 			structRec rec = RectangleConverter(reg, degThre);
-			t2 += clock() - last_time;
+			//t2 += clock() - last_time;
 
-			//根据密度阈值，调整区域 返回boolean, curMap, rec, reg
-			last_time = clock();
+			// 根据密度阈值，调整区域 返回boolean, curMap, rec, reg
+			//last_time = clock();
 			structRefiner RF = Refiner(reg, rec, RG.curMap);
-			t3 += clock() - last_time;
+			//t3 += clock() - last_time;
 			reg = RF.reg;
 			rec = RF.rec;
 			if (!RF.boolean)
 				continue;
 
-			//矩形调整 返回logNFA, rec
-			last_time = clock();
+			// 矩形调整 返回logNFA, rec
+			//last_time = clock();
 			structRectangleImprover RI = RectangleImprover(rec);
 			rec = RI.rec;
 			Mat nonZeroCoordinates;
@@ -154,13 +154,13 @@ namespace mylsd {
 				for (int j = 0; j < nonZeroCoordinates.total(); j++) {
 					usedMap.ptr<uint8_t>(nonZeroCoordinates.at<Point>(j).y)[nonZeroCoordinates.at<Point>(j).x] = 2;
 				}
-				t4 += clock() - last_time;
+				//t4 += clock() - last_time;
 				continue;
 			}
-			t4 += clock() - last_time;
+			//t4 += clock() - last_time;
 
-			last_time = clock();
-			//根据缩放尺度重新调整图像中所找到的直线信息
+			//last_time = clock();
+			// 根据缩放尺度重新调整图像中所找到的直线信息
 			if (sca != 1) {
 				rec.x1 = (rec.x1 - 1.0) / sca + 1.0;
 				rec.y1 = (rec.y1 - 1.0) / sca + 1.0;
@@ -171,36 +171,30 @@ namespace mylsd {
 			for (int j = 0; j < nonZeroCoordinates.total(); j++) {
 				usedMap.ptr<uint8_t>(nonZeroCoordinates.at<Point>(j).y)[nonZeroCoordinates.at<Point>(j).x] = 1;
 			}
-			//for (int y = 0; y < newMapRow; y++) {
-			//	for (int x = 0; x < newMapCol; x++) {
-			//		/*regIdx.ptr<uint8_t>(y)[x] += RF.curMap.ptr<uint8_t>(y)[x] * (regCnt + 1);*/
-			//		if (RF.curMap.ptr<uint8_t>(y)[x] == 1)
-			//			usedMap.ptr<uint8_t>(y)[x] = 1;
-			//	}
-			//}
-			//保存所找到的直线支持区域和拟合矩形
+
+			// 保存所找到的直线支持区域和拟合矩形
 			structRec* tempRec = (structRec*)malloc(sizeof(structRec));
 			recSaveNow[0] = rec;
 			recSaveNow[0].next = tempRec;
 			recSaveNow = tempRec;
 			regCnt++;
-			t5 += clock() - last_time;
+			//t5 += clock() - last_time;
 		}
-		printf("%lf, %lf, %lf, %lf, %lf\n", t1 / CLOCKS_PER_SEC, t2 / CLOCKS_PER_SEC, t3 / CLOCKS_PER_SEC, t4 / CLOCKS_PER_SEC, t5 / CLOCKS_PER_SEC);
-		printf("2 %lf\n", (clock() - last_time2) / CLOCKS_PER_SEC);
+		//printf("%lf, %lf, %lf, %lf, %lf\n", t1 / CLOCKS_PER_SEC, t2 / CLOCKS_PER_SEC, t3 / CLOCKS_PER_SEC, t4 / CLOCKS_PER_SEC, t5 / CLOCKS_PER_SEC);
+		//printf("2 %lf\n", (clock() - last_time2) / CLOCKS_PER_SEC);
 
-		//将所提取到的直线按照像素点标记在图像矩阵中
+		// 将所提取到的直线按照像素点标记在图像矩阵中
 		Vec3b color;
 		recSaveNow = recSaveHead;
 		structLinesInfo* linesInfo = (structLinesInfo*)malloc(regCnt * sizeof(structLinesInfo));
 		for (int i = 0; i < regCnt; i++) {
-			//获得直线的端点坐标
+			// 获得直线的端点坐标
 			double x1 = recSaveNow[0].x1;
 			double y1 = recSaveNow[0].y1;
 			double x2 = recSaveNow[0].x2;
 			double y2 = recSaveNow[0].y2;
 			recSaveNow = recSaveNow[0].next;
-			//求取直线斜率
+			// 求取直线斜率
 			double k = (y2 - y1) / (x2 - x1);
 			double ang = atand(k);
 			int orient = 1;
@@ -210,7 +204,7 @@ namespace mylsd {
 			}
 
 #ifdef drawPicture
-			//确定直线X坐标轴和Y坐标轴的跨度
+			// 确定直线X坐标轴和Y坐标轴的跨度
 			int xLow, xHigh, yLow, yHigh;
 			if (x1 > x2) {
 				xLow = (int)floor(x2);
@@ -229,7 +223,7 @@ namespace mylsd {
 				yHigh = (int)ceil(y2);
 			}
 			double xRang = abs(x2 - x1), yRang = abs(y2 - y1);
-			//确定直线跨度较大的坐标轴作为采样主轴并采样
+			// 确定直线跨度较大的坐标轴作为采样主轴并采样
 			int xx_len = xHigh - xLow + 1, yy_len = yHigh - yLow + 1;
 			int* xx, * yy;
 			int j;
@@ -257,7 +251,7 @@ namespace mylsd {
 					}
 				}
 			}
-			//标记直线像素
+			// 标记直线像素
 			color[0] = rand() % 255;
 			color[1] = rand() % 255;
 			color[2] = rand() % 255;
@@ -299,8 +293,8 @@ namespace mylsd {
 		//计算图中点到最近点的最小距离，在特征匹配时用作先验概率
 		int cell_radius = floor(z_occ_max_dis / res);
 		int height = MapGray.rows, width = MapGray.cols;
-		Mat mapCache = Mat::zeros(height, width, CV_64FC1);
-		Mat mapFlag = Mat::zeros(height, width, CV_64FC1);
+		Mat mapCache = Mat::zeros(height, width, CV_32FC1);
+		Mat mapFlag = Mat::zeros(height, width, CV_32FC1);
 
 		structCache* head = (structCache*)malloc(sizeof(structCache));
 		structCache* now = head, * tail;
@@ -317,11 +311,11 @@ namespace mylsd {
 					now->cur_j = j;
 					now->next = temp;
 					now = temp;
-					mapCache.ptr<double>(i)[j] = 0;
-					mapFlag.ptr<double>(i)[j] = 1;
+					mapCache.ptr<float>(i)[j] = 0;
+					mapFlag.ptr<float>(i)[j] = 1;
 				}
 				else {
-					mapCache.ptr<double>(i)[j] = z_occ_max_dis;
+					mapCache.ptr<float>(i)[j] = z_occ_max_dis;
 				}
 			}
 		}
@@ -332,14 +326,14 @@ namespace mylsd {
 			int src_i = now->src_i, src_j = now->src_j;
 			int cur_i = now->cur_i, cur_j = now->cur_j;
 
-			if (cur_i >= 1 && mapFlag.ptr<double>(cur_i - 1)[cur_j] == 0) {
+			if (cur_i >= 1 && mapFlag.ptr<float>(cur_i - 1)[cur_j] == 0) {
 				double di = abs(cur_i - src_i);
 				double dj = abs(cur_j - src_j);
 				double distance = sqrt(di * di + dj * dj);
 
 				if (distance <= cell_radius) {
-					mapCache.ptr<double>(cur_i - 1)[cur_j] = distance * res;
-					mapFlag.ptr<double>(cur_i - 1)[cur_j] = 1;
+					mapCache.ptr<float>(cur_i - 1)[cur_j] = distance * res;
+					mapFlag.ptr<float>(cur_i - 1)[cur_j] = 1;
 					structCache* temp = (structCache*)malloc(sizeof(structCache));
 					temp->next = NULL;
 					tail->src_i = src_i;
@@ -351,14 +345,14 @@ namespace mylsd {
 				}
 			}
 
-			if (cur_j >= 1 && mapFlag.ptr<double>(cur_i)[cur_j - 1] == 0) {
+			if (cur_j >= 1 && mapFlag.ptr<float>(cur_i)[cur_j - 1] == 0) {
 				double di = abs(cur_i - src_i);
 				double dj = abs(cur_j - src_j);
 				double distance = sqrt(di * di + dj * dj);
 
 				if (distance <= cell_radius) {
-					mapCache.ptr<double>(cur_i)[cur_j - 1] = distance * res;
-					mapFlag.ptr<double>(cur_i)[cur_j - 1] = 1;
+					mapCache.ptr<float>(cur_i)[cur_j - 1] = distance * res;
+					mapFlag.ptr<float>(cur_i)[cur_j - 1] = 1;
 					structCache* temp = (structCache*)malloc(sizeof(structCache));
 					temp->next = NULL;
 					tail->src_i = src_i;
@@ -370,14 +364,14 @@ namespace mylsd {
 				}
 			}
 
-			if (cur_i < height - 1 && mapFlag.ptr<double>(cur_i + 1)[cur_j] == 0) {
+			if (cur_i < height - 1 && mapFlag.ptr<float>(cur_i + 1)[cur_j] == 0) {
 				double di = abs(cur_i - src_i);
 				double dj = abs(cur_j - src_j);
 				double distance = sqrt(di * di + dj * dj);
 
 				if (distance <= cell_radius) {
-					mapCache.ptr<double>(cur_i + 1)[cur_j] = distance * res;
-					mapFlag.ptr<double>(cur_i + 1)[cur_j] = 1;
+					mapCache.ptr<float>(cur_i + 1)[cur_j] = distance * res;
+					mapFlag.ptr<float>(cur_i + 1)[cur_j] = 1;
 					structCache* temp = (structCache*)malloc(sizeof(structCache));
 					temp->next = NULL;
 					tail->src_i = src_i;
@@ -389,14 +383,14 @@ namespace mylsd {
 				}
 			}
 
-			if (cur_j < width - 1 && mapFlag.ptr<double>(cur_i)[cur_j + 1] == 0) {
+			if (cur_j < width - 1 && mapFlag.ptr<float>(cur_i)[cur_j + 1] == 0) {
 				double di = abs(cur_i - src_i);
 				double dj = abs(cur_j - src_j);
 				double distance = sqrt(di * di + dj * dj);
 
 				if (distance <= cell_radius) {
-					mapCache.ptr<double>(cur_i)[cur_j + 1] = distance * res;
-					mapFlag.ptr<double>(cur_i)[cur_j + 1] = 1;
+					mapCache.ptr<float>(cur_i)[cur_j + 1] = distance * res;
+					mapFlag.ptr<float>(cur_i)[cur_j + 1] = 1;
 					structCache* temp = (structCache*)malloc(sizeof(structCache));
 					temp->next = NULL;
 					tail->src_i = src_i;
@@ -422,9 +416,8 @@ namespace mylsd {
 		int prec = 3, xLim = image.cols, yLim = image.rows;
 		int newXLim = (int)floor(xLim * sca);
 		int newYLim = (int)floor(yLim * sca);
-		//printf("newXLim=%d newYLim=%d\n", newXLim, newYLim);
-		Mat auxImage = Mat::zeros(yLim, newXLim, CV_64FC1);
-		Mat newImage = Mat::zeros(newYLim, newXLim, CV_64FC1);
+		Mat auxImage = Mat::zeros(yLim, newXLim, CV_32FC1);
+		Mat newImage = Mat::zeros(newYLim, newXLim, CV_32FC1);
 		//如果是缩小图像则调整标准差的值
 		if (sca < 1.0)
 			sig = sig / sca;
@@ -475,7 +468,7 @@ namespace mylsd {
 						j = douXLim - j - 1;
 					newVal += image.ptr<uint8_t>(y)[j] * kerVal[i];
 				}
-				auxImage.ptr<double>(y)[x] = round(newVal);
+				auxImage.ptr<float>(y)[x] = round(newVal);
 			}
 		}//end for（x方向采样）
 
@@ -515,20 +508,21 @@ namespace mylsd {
 					}
 					if (j >= yLim)
 						j = douYLim - j - 1;
-					newVal += auxImage.ptr<double>(j)[x] * kerVal[i];
+					newVal += auxImage.ptr<float>(j)[x] * kerVal[i];
 				}
-				newImage.ptr<double>(y)[x] = newVal;
+				newImage.ptr<float>(y)[x] = newVal;
 			}
 		}//end for（y方向采样）
 
 		return newImage;
 	}
 
-	LSD::structRegionGrower LSD::RegionGrower(int x, int y, double regDeg, double degThre) {
+	LSD::structRegionGrower LSD::RegionGrower(const int x, const int y, double regDeg, const double degThre) {
 		// 输入
 		// x：        起始点X轴坐标
 		// y：        起始点Y轴坐标
 		// regDeg：   区域level - line场的倾角
+		// degThre:   角度阈值
 		//
 		// 输出
 		// curMap：   根据所给种子点生长所得区域指示图
@@ -540,71 +534,52 @@ namespace mylsd {
 		// .pts：     区域所包含像素所有坐标值
 		//
 		// 函数功能： 通过合并相同方向的level - line场实现区域增长
-		structPts *regPts_now, *regPts_head, *regPts_end;
-		regPts_head = regPts_end = regPts_now = (structPts*)malloc(sizeof(structPts));
-		regPts_head[0].x = x;
-		regPts_head[0].y = y;
-		regPts_head[0].next = NULL;
-		double sinDeg = sin(regDeg), cosDeg = cos(regDeg);
+		vector<int> regPts_x, regPts_y;
+		regPts_x.push_back(x);
+		regPts_y.push_back(y);
+
+		double sinDeg = sin(regDeg), cosDeg = cos(regDeg), curDeg, degDif;
 		Mat curMap = Mat::zeros(newMapRow, newMapCol, CV_8UC1);
 		curMap.ptr<uint8_t>(y)[x] = 1;
-		int growNum = 1, exNum = 0, isFirstTime = 1, temp = 0, roi_x, roi_y;
-		while (exNum != growNum) {
-			exNum = growNum;
-			regPts_now = regPts_head;
-			for (int i = 0; i < growNum; i++) {
-				// 检验8邻域像素是否满足角弧度阈值
-				roi_x = regPts_now[0].x, roi_y = regPts_now[0].y;
-				for (int m = roi_y - 1; m <= roi_y + 1; m++) {
-					for (int n = roi_x - 1; n <= roi_x + 1; n++) {
-						// 检查像素值的状态
-						if (m >= 0 && n >= 0 && m < newMapRow && n < newMapCol) {
-							if (curMap.ptr<uint8_t>(m)[n] != 1 && usedMap.ptr<uint8_t>(m)[n] != 1) {
-								// 检查是当前弧度满足阈值 或是 当前弧度减pi满足阈值
-								double curDeg = degMap.ptr<double>(m)[n];
-								double degDif = abs(regDeg - curDeg);
-								if (degDif > pi * 3 / 2.0)
-									degDif = abs(degDif - 2.0 * pi);
-								if (degDif < degThre) {
-									// 更新统计所得弧度的正弦和余弦值
-									cosDeg += cos(curDeg);
-									sinDeg += sin(curDeg);
-									regDeg = atan2(sinDeg, cosDeg);
-									// 记录当前像素
-									curMap.ptr<uint8_t>(m)[n] = 1;
-									growNum++;
-									structPts* temp = (structPts*)malloc(sizeof(structPts));
-									temp->x = n;
-									temp->y = m;
-									temp->next = NULL;
-									regPts_end->next = temp;
-									regPts_end = temp;
-								}
+		int pntEnd = 1, pntNow, m, n;
+
+		for (pntNow = 0; pntNow < pntEnd; pntNow++) {
+			// 检验8邻域像素是否满足角弧度阈值
+			for (m = regPts_y[pntNow] - 1; m <= regPts_y[pntNow] + 1; m++) {
+				for (n = regPts_x[pntNow] - 1; n <= regPts_x[pntNow] + 1; n++) {
+					// 检查像素值的状态
+					if (m >= 0 && n >= 0 && m < newMapRow && n < newMapCol) {
+						if (curMap.ptr<uint8_t>(m)[n] != 1 && usedMap.ptr<uint8_t>(m)[n] != 1) {
+							// 检查是当前弧度满足阈值 或是 当前弧度减pi满足阈值
+							curDeg = degMap.ptr<float>(m)[n];
+							degDif = abs(regDeg - curDeg);
+							if (degDif > pi1_5)
+								degDif = abs(degDif - pi2);
+
+							if (degDif < degThre) {
+								// 更新统计所得弧度的正弦和余弦值
+								cosDeg += cos(curDeg);
+								sinDeg += sin(curDeg);
+								regDeg = atan2(sinDeg, cosDeg);
+								// 记录当前像素
+								curMap.ptr<uint8_t>(m)[n] = 1;
+								regPts_x.push_back(n);
+								regPts_y.push_back(m);
+								pntEnd++;
 							}
 						}
 					}
 				}
-				if (regPts_now != regPts_end)
-					regPts_now = regPts_now[0].next;
 			}
-		}
-
-		int* rePts_x = (int*)malloc(growNum * sizeof(int));
-		int* rePts_y = (int*)malloc(growNum * sizeof(int));
-		regPts_now = regPts_head;
-		for (int i = 0; i < growNum; i++) {
-			rePts_y[i] = regPts_now[0].y;
-			rePts_x[i] = regPts_now[0].x;
-			regPts_now = regPts_now[0].next;
 		}
 
 		structReg reg;
 		reg.x = x;
 		reg.y = y;
-		reg.num = growNum;
+		reg.num = pntEnd;
 		reg.deg = regDeg;
-		reg.regPts_x = rePts_x;
-		reg.regPts_y = rePts_y;
+		reg.regPts_x = regPts_x;
+		reg.regPts_y = regPts_y;
 
 		structRegionGrower RG;
 		RG.curMap = curMap;
@@ -613,20 +588,20 @@ namespace mylsd {
 		return RG;
 	}
 
-	LSD::structCenterGetter LSD::CenterGetter(const int regNum, const int* regX, const int* regY) {
+	LSD::structCenterGetter LSD::CenterGetter(const int regNum, const vector<int> regX, const vector<int> regY) {
 		// 输入：
-		// regNum：区域包含像素点数
-		// regX：  区域内像素点x坐标向量
-		// regY：  区域内像素点y坐标向量
+		// regNum：  区域包含像素点数
+		// regX：    区域内像素点x坐标向量
+		// regY：    区域内像素点y坐标向量
 		//
 		// 输出：
-		// cenX：  区域重心x坐标
-		// cenY：  区域重心y坐标
+		// cenX：    区域重心x坐标
+		// cenY：    区域重心y坐标
 		//
 		// 函数功能：根据区域坐标和像素点的权重，找到区域重心
 		double cenX = 0, cenY = 0, weiSum = 0, pixWei;
 		for (int k = 0; k < regNum; k++) {
-			pixWei = magMap.ptr<double>(regY[k])[regX[k]];
+			pixWei = magMap.ptr<float>(regY[k])[regX[k]];
 			cenX += pixWei * regX[k];
 			cenY += pixWei * regY[k];
 			weiSum += pixWei;
@@ -638,20 +613,21 @@ namespace mylsd {
 		return CG;
 	}
 
-	double LSD::OrientationGetter(const structReg reg, const double cenX, const double cenY, const int* regX, const int* regY, const double degThre) {
+	double LSD::OrientationGetter(const structReg reg, const double cenX, const double cenY, vector<int> regX, vector<int> regY, const double degThre) {
 		// 输入：
-		// reg： 区域结构体
-		// cenX：矩形重心X坐标
-		// cenY：矩形重心Y坐标
-		// regX：直线支持区域中各点的X坐标
-		// regY：直线支持区域中各点的Y坐标
+		// reg：     区域结构体
+		// cenX：    矩形重心X坐标
+		// cenY：    矩形重心Y坐标
+		// regX：    直线支持区域中各点的X坐标
+		// regY：    直线支持区域中各点的Y坐标
+		// degThre:  角度阈值
 		//
 		// 函数功能：求取区域主惯性轴方向的角弧度值。
 
 		double Ixx = 0, Iyy = 0, Ixy = 0, weiSum = 0, pixWei;
 		// 计算主惯性轴作为矩形方向
 		for (int i = 0; i < reg.num; i++) {
-			pixWei = magMap.ptr<double>(reg.regPts_y[i])[reg.regPts_x[i]];
+			pixWei = magMap.ptr<float>(reg.regPts_y[i])[reg.regPts_x[i]];
 			Ixx += pixWei * pow(reg.regPts_y[i] - cenY, 2);
 			Iyy += pixWei * pow(reg.regPts_x[i] - cenX, 2);
 			Ixy -= pixWei * (reg.regPts_x[i] - cenX) * (reg.regPts_y[i] - cenY);
@@ -661,7 +637,7 @@ namespace mylsd {
 		Iyy /= weiSum;
 		Ixy /= weiSum;
 
-		const double lamb = (Ixx + Iyy - sqrt(pow(Ixx - Iyy, 2) + 4 * Ixy * Ixy)) / 2.0;
+		const double lamb = (Ixx + Iyy - sqrt(pow(Ixx - Iyy, 2) + 4 * pow(Ixy, 2))) / 2.0;
 		double inertiaDeg;
 		if (abs(Ixx) > abs(Iyy))
 			inertiaDeg = atan2(lamb - Ixx, Ixy);
@@ -685,22 +661,23 @@ namespace mylsd {
 
 	LSD::structRec LSD::RectangleConverter(const structReg reg, const double degThre) {
 		// 输入
-		// reg：  指示区域的结构体
+		// reg：     指示区域的结构体
+		// degThre:  角度阈值
 		//
 		// 输出
-		// rec：  获得的矩形结构体
-		// .x1：  矩形短边某一段中点X坐标
-		// .y1：  矩形短边某一段中点Y坐标
-		// .x2：  矩形短边另一段中点X坐标
-		// .y2：  矩形短边某一段中点Y坐标
-		// .wid： 矩形短边长度
-		// .cX：  矩形重心X坐标
-		// .cY：  矩形重心Y坐标
-		// .deg： 矩形主方向角弧度
-		// .dx：  矩形主方向角弧度余弦值
-		// .dy：  矩形主方向角弧度正弦值
-		// .p：   矩形内点level - line场角弧度与矩形主方向角弧度相符概率；
-		// .prec：判断矩形内点level - line场角弧度与矩形主方向角弧度的阈值（角度容忍度）
+		// rec：     获得的矩形结构体
+		// .x1：     矩形短边某一段中点X坐标
+		// .y1：     矩形短边某一段中点Y坐标
+		// .x2：     矩形短边另一段中点X坐标
+		// .y2：     矩形短边某一段中点Y坐标
+		// .wid：    矩形短边长度
+		// .cX：     矩形重心X坐标
+		// .cY：     矩形重心Y坐标
+		// .deg：    矩形主方向角弧度
+		// .dx：     矩形主方向角弧度余弦值
+		// .dy：     矩形主方向角弧度正弦值
+		// .p：      矩形内点level - line场角弧度与矩形主方向角弧度相符概率；
+		// .prec：   判断矩形内点level - line场角弧度与矩形主方向角弧度的阈值（角度容忍度）
 		//
 		// 函数功能：根据线段支持域寻找最小内接矩阵
 
@@ -710,9 +687,8 @@ namespace mylsd {
 		const double inertiaDeg = OrientationGetter(reg, CG.cenX, CG.cenY, reg.regPts_x, reg.regPts_y, degThre);
 
 		// 确定矩形长和宽
-		double dx = cos(inertiaDeg);
-		double dy = sin(inertiaDeg);
-		double lenMin = 0, lenMax = 0, widMin = 0, widMax = 0, len, wid;
+		const double dx = cos(inertiaDeg), dy = sin(inertiaDeg);
+		double lenMin = 1e10, lenMax = 0, widMin = 1e10, widMax = 0, len, wid;
 		
 		for (int m = 0; m < reg.num; m++) {
 			len = (reg.regPts_x[m] - CG.cenX) * dx + (reg.regPts_y[m] - CG.cenY) * dy;
@@ -742,17 +718,15 @@ namespace mylsd {
 
 	LSD::structRegionRadiusReducer LSD::RegionRadiusReducer(structReg reg, structRec rec, Mat curMap) {
 		// 输入：
-		// reg：    当前区域的结构体
-		// rec：    当前区域的最小外接矩形的结构体
-		// denThre：矩形密度阈值
-		// curMap： 当前区域图
-		// magMap： 梯度幅值图
+		// reg：     当前区域的结构体
+		// rec：     当前区域的最小外接矩形的结构体
+		// curMap：  当前区域图
 		//
 		// 输出：
-		// bool：   减小半径后是否能找到合适矩形的指示符
-		// curMap： 当前区域指示图
-		// reg：    当前区域结构体
-		// rec：    当前区域的最小外接矩形的结构体
+		// bool：    减小半径后是否能找到合适矩形的指示符
+		// curMap：  当前区域指示图
+		// reg：     当前区域结构体
+		// rec：     当前区域的最小外接矩形的结构体
 		//
 		// 函数功能：用于减小区域的半径从而减少区域内点数以期望生成更适宜的最小外接矩形。
 		structRegionRadiusReducer RRR;
@@ -771,19 +745,21 @@ namespace mylsd {
 		// 选取直线最远两端离重心参考点距离中较大值作为搜索半径
 		const double rad1 = sqrt(pow(oriX - RRR.rec.x1, 2) + pow(oriY - RRR.rec.y1, 2));
 		const double rad2 = sqrt(pow(oriX - RRR.rec.x2, 2) + pow(oriY - RRR.rec.y2, 2));
-		double rad = max(rad1, rad2);
+		double rad = max(rad1, rad2), rad_square;
 
 		while (den < denThre) {
 			// 以0.75的搜索速度减小搜索半径，减少直线支持区域中的像素数
 			rad *= 0.75;
+			rad_square = rad * rad;
 			int i = 0;
+
 			while (i <= RRR.reg.num) {
 				if (sqrt(pow(oriX - RRR.reg.regPts_x[i], 2) + pow(oriY - RRR.reg.regPts_y[i], 2)) > rad) {
 					RRR.curMap.ptr<uint8_t>(RRR.reg.regPts_y[i])[RRR.reg.regPts_x[i]] = 0;
 					RRR.reg.regPts_x[i] = RRR.reg.regPts_x[RRR.reg.num - 1];
 					RRR.reg.regPts_y[i] = RRR.reg.regPts_y[RRR.reg.num - 1];
-					RRR.reg.regPts_x[RRR.reg.num - 1] = NULL;
-					RRR.reg.regPts_y[RRR.reg.num - 1] = NULL;
+					RRR.reg.regPts_x.pop_back();
+					RRR.reg.regPts_y.pop_back();
 					i--;
 					RRR.reg.num--;
 				}
@@ -804,15 +780,15 @@ namespace mylsd {
 
 	LSD::structRefiner LSD::Refiner(structReg reg, structRec rec, Mat curMap) {
 		// 输入：
-		// reg：   直线支持区域的结构体
-		// rec：   直线支持区域的最小外接矩形的结构体
-		// curMap：当前区域生长图
+		// reg：      直线支持区域的结构体
+		// rec：      直线支持区域的最小外接矩形的结构体
+		// curMap：   当前区域生长图
 		//
 		// 输出：
-		// bool：  是否成功修正指示符
-		// curMap：当前区域生长指示图
-		// reg：   当前所生长的区域
-		// rec：   当前所生长的区域的最小外接矩形
+		// bool：     是否成功修正指示符
+		// curMap：   当前区域生长指示图
+		// reg：      当前所生长的区域
+		// rec：      当前所生长的区域的最小外接矩形
 		//
 		// 函数功能： 修正所提取的直线支持区域以及所对应的最小外接矩形
 		structRefiner RF;
@@ -827,12 +803,12 @@ namespace mylsd {
 			return RF;
 		}
 		const int oriX = RF.reg.x, oriY = RF.reg.y;
-		const double cenDeg = degMap.ptr<double>(oriY)[oriX];
-		double difSum = 0, squSum = 0, curDeg, degDif, ptNum = 0;
+		const double cenDeg = degMap.ptr<float>(oriY)[oriX];
+		double difSum = 0, squSum = 0, curDeg, degDif, pntNum = 0, wid_square = pow(RF.rec.wid, 2);
 		// 利用离区域生长初始点距离小于矩形宽度的像素进行区域方向阈值重估计
 		for (int i = 0; i < RF.reg.num; i++) {
-			if (sqrt(pow(oriX - RF.reg.regPts_x[i], 2) + pow(oriY - RF.reg.regPts_y[i], 2)) < RF.rec.wid) {
-				curDeg = degMap.ptr<double>(RF.reg.regPts_y[i])[RF.reg.regPts_x[i]];
+			if (pow(oriX - RF.reg.regPts_x[i], 2) + pow(oriY - RF.reg.regPts_y[i], 2) < wid_square) {
+				curDeg = degMap.ptr<float>(RF.reg.regPts_y[i])[RF.reg.regPts_x[i]];
 				degDif = curDeg - cenDeg;
 				while (degDif <= -pi) {
 					degDif += pi2;
@@ -842,11 +818,11 @@ namespace mylsd {
 				}
 				difSum += degDif;
 				squSum += degDif * degDif;
-				ptNum++;
+				pntNum++;
 			}
 		}
-		double meanDif = difSum / ptNum;
-		double degThre = 2.0 * sqrt((squSum - 2.0 * meanDif * difSum) / ptNum + pow(meanDif, 2));
+		double meanDif = difSum / pntNum;
+		double degThre = 2.0 * sqrt((squSum - 2.0 * meanDif * difSum) / pntNum + pow(meanDif, 2));
 		// 利用新阈值重新进行区域生长
 		structRegionGrower RG = RegionGrower(oriX, oriY, cenDeg, degThre);
 		RF.curMap = RG.curMap;
@@ -862,7 +838,6 @@ namespace mylsd {
 		// 如果还未满足密度阈值，则减小区域半径
 		if (den < denThre) {
 			structRegionRadiusReducer RRR = RegionRadiusReducer(RF.reg, RF.rec, RF.curMap);
-			//printf("RF x%d y%d\nRRR x%d y%d\n", RF.curMap.cols, RF.curMap.rows, RRR.curMap.cols, RRR.curMap.rows);
 			RF.boolean = RRR.boolean;
 			RF.curMap = RRR.curMap;
 			RF.rec = RRR.rec;
@@ -875,35 +850,35 @@ namespace mylsd {
 
 	double LSD::RectangleNFACalculator(structRec rec) {
 		// 输入：
-		// rec：   当前区域最小外接矩形的结构体
-		// degMap：水准线角弧度图
-		// logNT： 测试数量的对数值
+		// rec：     当前区域最小外接矩形的结构体
+		// degMap：  水准线角弧度图
+		// logNT：   测试数量的对数值
 		//
 		// 输出：
-		// logNFA：虚警数的自然对数值
+		// logNFA：  虚警数的自然对数值
 		//
 		// 函数功能：计算矩形所在区域相对于噪声模型的虚警数
 		int allPixNum = 0, aliPixNum = 0;
-		//仅在0~pi的弧度之间考虑矩形角度
+		// 仅在0~pi的弧度之间考虑矩形角度
 		int cnt_col, cnt_row;
 		for (cnt_row = 0; cnt_row < newMapRow; cnt_row++) {
 			for (cnt_col = 0; cnt_col < newMapCol; cnt_col++) {
-				if (degMap.ptr<double>(cnt_row)[cnt_col] > pi)
-					degMap.ptr<double>(cnt_row)[cnt_col] -= pi;
+				if (degMap.ptr<float>(cnt_row)[cnt_col] > pi)
+					degMap.ptr<float>(cnt_row)[cnt_col] -= pi;
 			}
 		}
-		//找到矩形四个顶点的坐标
+		// 找到矩形四个顶点的坐标
 		structRecVer recVer;
-		double verX[4], verY[4];
-		verX[0] = rec.x1 - rec.dy * rec.wid / 2.0;
-		verX[1] = rec.x2 - rec.dy * rec.wid / 2.0;
-		verX[2] = rec.x2 + rec.dy * rec.wid / 2.0;
-		verX[3] = rec.x1 + rec.dy * rec.wid / 2.0;
-		verY[0] = rec.y1 + rec.dx * rec.wid / 2.0;
-		verY[1] = rec.y2 + rec.dx * rec.wid / 2.0;
-		verY[2] = rec.y2 - rec.dx * rec.wid / 2.0;
-		verY[3] = rec.y1 - rec.dx * rec.wid / 2.0;
-		//将x值最小的点作为1号点，然后逆时针排序其余点
+		double verX[4], verY[4], wid_half = rec.wid / 2.0;
+		verX[0] = rec.x1 - rec.dy * wid_half;
+		verX[1] = rec.x2 - rec.dy * wid_half;
+		verX[2] = rec.x2 + rec.dy * wid_half;
+		verX[3] = rec.x1 + rec.dy * wid_half;
+		verY[0] = rec.y1 + rec.dx * wid_half;
+		verY[1] = rec.y2 + rec.dx * wid_half;
+		verY[2] = rec.y2 - rec.dx * wid_half;
+		verY[3] = rec.y1 - rec.dx * wid_half;
+		// 将x值最小的点作为1号点，然后逆时针排序其余点
 		int offset, i, j;
 		if (rec.x1 < rec.x2 && rec.y1 <= rec.y2)
 			offset = 0;
@@ -917,57 +892,57 @@ namespace mylsd {
 			recVer.verX[i] = verX[(offset + i) % 4];
 			recVer.verY[i] = verY[(offset + i) % 4];
 		}
-		//统计当前矩形中与矩形主惯性轴方向相同（小于角度容忍度）的像素点数量 aliPixNum
-		//矩形内所有像素点数 allPixNum
+		// 统计当前矩形中与矩形主惯性轴方向相同（小于角度容忍度）的像素点数量 aliPixNum
+		// 矩形内所有像素点数 allPixNum
 		int xRang_len = abs(ceil(recVer.verX[0]) - floor(recVer.verX[2])) + 1;
-		int* xRang = (int*)malloc(xRang_len * sizeof(int));
+
+		vector<int> xRang;
 		for (i = 0; i < xRang_len; i++) {
-			xRang[i] = i + ceil(recVer.verX[0]);
+			xRang.push_back(i + ceil(recVer.verX[0]));
 		}
 		double lineK[4];
 		lineK[0] = (recVer.verY[1] - recVer.verY[0]) / (recVer.verX[1] - recVer.verX[0]);
 		lineK[1] = (recVer.verY[2] - recVer.verY[1]) / (recVer.verX[2] - recVer.verX[1]);
 		lineK[2] = (recVer.verY[2] - recVer.verY[3]) / (recVer.verX[2] - recVer.verX[3]);
 		lineK[3] = (recVer.verY[3] - recVer.verY[0]) / (recVer.verX[3] - recVer.verX[0]);
-		int* yLow = (int*)malloc(xRang_len * sizeof(int));
-		int* yHigh = (int*)malloc(xRang_len * sizeof(int));
-		//yLow
+
+		vector<int> yLow, yHigh;
+		// yLow
 		int cnt_yArry = 0;
 		for (i = 0; i < xRang_len; i++) {
 			if (xRang[i] < recVer.verX[3])
-				yLow[cnt_yArry++] = (int)ceil(recVer.verY[0] + (xRang[i] - recVer.verX[0]) * lineK[3]);
+				yLow.push_back(ceil(recVer.verY[0] + (xRang[i] - recVer.verX[0]) * lineK[3]));
+			
 		}
 		for (i = 0; i < xRang_len; i++) {
 			if (xRang[i] >= recVer.verX[3])
-				yLow[cnt_yArry++] = (int)ceil(recVer.verY[3] + (xRang[i] - recVer.verX[3]) * lineK[2]);
+				yLow.push_back(ceil(recVer.verY[3] + (xRang[i] - recVer.verX[3]) * lineK[2]));
 		}
-		//yHigh
+		// yHigh
 		cnt_yArry = 0;
 		for (i = 0; i < xRang_len; i++) {
 			if (xRang[i] < recVer.verX[1])
-				yHigh[cnt_yArry++] = (int)floor(recVer.verY[0] + (xRang[i] - recVer.verX[0]) * lineK[0]);
+				yHigh.push_back(floor(recVer.verY[0] + (xRang[i] - recVer.verX[0]) * lineK[0]));
 		}
 		for (i = 0; i < xRang_len; i++) {
 			if (xRang[i] >= recVer.verX[1])
-				yHigh[cnt_yArry++] = (int)floor(recVer.verY[1] + (xRang[i] - recVer.verX[1]) * lineK[1]);
+				yHigh.push_back(floor(recVer.verY[1] + (xRang[i] - recVer.verX[1]) * lineK[1]));
 		}
+
 		for (i = 0; i < xRang_len; i++) {
 			for (j = yLow[i]; j <= yHigh[i]; j++) {
 				if ((xRang[i] >= 0) && (xRang[i] < newMapCol) && (j >= 0) && (j < newMapRow)) {
 					allPixNum++;
-					double degDif = abs(rec.deg - degMap.ptr<double>(j)[xRang[i]]);
-					if (degDif > pi * 3 / 2.0)
+					double degDif = abs(rec.deg - degMap.ptr<float>(j)[xRang[i]]);
+					if (degDif > pi1_5)
 						degDif = abs(degDif - pi2);
 					if (degDif < rec.prec)
 						aliPixNum++;
 				}
 			}
 		}
-		//计算NFA的自然对数值
-		double coefA = 0.1066 * logNT + 2.6750;
-		double coefB = 0.004120 * logNT - 0.6223;
-		double coefC = -0.002607 * logNT + 0.1550;
-		double aliThre = allPixNum * (coefA * pow(allPixNum, coefB) + coefC);
+		// 计算NFA的自然对数值
+		const double aliThre = allPixNum * (coefA * pow(allPixNum, coefB) + coefC);
 		double logNFA2 = -1;
 		if (aliPixNum > aliThre)
 			logNFA2 = 1.0 * aliPixNum / allPixNum;
@@ -977,11 +952,11 @@ namespace mylsd {
 
 	LSD::structRectangleImprover LSD::RectangleImprover(structRec rec) {
 		// 输入：
-		// rec：    当前矩形结构体
+		// rec：     当前矩形结构体
 		//
 		// 输出：
-		// logNFA： 虚警数的自然对数值
-		// rec：    修正后的矩形结构体
+		// logNFA：  虚警数的自然对数值
+		// rec：     修正后的矩形结构体
 		//
 		// 函数功能：利用虚警数(NFA, Number of False Alarms)修正区域最小外接矩形
 		structRectangleImprover RI;

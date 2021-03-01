@@ -45,7 +45,7 @@ int main() {
 		for (cnt_col = 0; cnt_col < oriMapCol; cnt_col++)
 			fscanf(fp, "%d", &mapValue.ptr<uint8_t>(cnt_row)[cnt_col]);
 	fclose(fp);
-	//imshow("1", mapValue);
+	imshow("1", mapValue);
 	//waitKey(1);
 
 	//读取Odometry 里程计数据
