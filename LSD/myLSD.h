@@ -27,7 +27,6 @@
 //计算出FeatureAssociation需要的mapCache，用于表示先验概率
 /////////////////////////////////////////////////////////////////////////
 
-
 #ifndef _MYLSD_
 #define _MYLSD_
 
@@ -40,107 +39,123 @@
 using namespace cv;
 
 namespace mylsd {
-	typedef struct _nodeBinCell {
-		int value;
-		int x;
-		int y;
-	} nodeBinCell;
+	class LSD {
+	public:
+		typedef struct _structLSD {
+			Mat lineIm;
+			structLinesInfo* linesInfo;
+			int len_linesInfo;
+		} structLSD;
 
-	typedef struct _structPts {
-		int x;
-		int y;
-		struct _structPts *next;
-	}structPts;
+		structLSD myLineSegmentDetector(Mat& MapGray, const int oriMapCol, const int oriMapRow, const double sca, const double sig,
+			const double angThre, const double denThre, const int pseBin);
+		Mat createMapCache(Mat MapGray, double res);
+	private:
+		typedef struct _nodeBinCell {
+			int value;
+			int x;
+			int y;
+		} nodeBinCell;
 
-	typedef struct _structCache {
-		int src_i;
-		int src_j;
-		int cur_i;
-		int cur_j;
-		struct _structCache *next;
-	}structCache;
+		typedef struct _structPts {
+			int x;
+			int y;
+			struct _structPts* next;
+		}structPts;
 
-	typedef struct _structReg {
-		int x;
-		int y;
-		int num;
-		double deg;
-		int *regPts_x;
-		int *regPts_y;
-		struct _structReg *next;
-	}structReg;
+		typedef struct _structCache {
+			int src_i;
+			int src_j;
+			int cur_i;
+			int cur_j;
+			struct _structCache* next;
+		}structCache;
 
-	typedef struct _structRegionGrower {
-		Mat curMap;
-		structReg reg;
-	}structRegionGrower;
+		typedef struct _structReg {
+			int x;
+			int y;
+			int num;
+			double deg;
+			int* regPts_x;
+			int* regPts_y;
+			struct _structReg* next;
+		}structReg;
 
-	typedef struct _structRectangleConverter {
-		double x1;
-		double y1;
-		double x2;
-		double y2;
-		double wid;
-		double cX;
-		double cY;
-		double deg;
-		double dx;
-		double dy;
-		double p;
-		double prec;
-		struct _structRectangleConverter *next;
-	}structRec;
+		typedef struct _structRegionGrower {
+			Mat curMap;
+			structReg reg;
+		}structRegionGrower;
 
-	typedef struct _structCenterGetter {
-		double cenX;
-		double cenY;
-	}structCenterGetter;
+		typedef struct _structRectangleConverter {
+			double x1;
+			double y1;
+			double x2;
+			double y2;
+			double wid;
+			double cX;
+			double cY;
+			double deg;
+			double dx;
+			double dy;
+			double p;
+			double prec;
+			struct _structRectangleConverter* next;
+		}structRec;
 
-	typedef struct _structRefiner {
-		bool boolean;
-		Mat curMap;
-		structReg reg;
-		structRec rec;
-	}structRefiner;
+		typedef struct _structCenterGetter {
+			double cenX;
+			double cenY;
+		}structCenterGetter;
 
-	typedef struct _structRegionRadiusReducer {
-		bool boolean;
-		Mat curMap;
-		structReg reg;
-		structRec rec;
-	} structRegionRadiusReducer;
+		typedef struct _structRefiner {
+			bool boolean;
+			Mat curMap;
+			structReg reg;
+			structRec rec;
+		}structRefiner;
 
-	typedef struct _structRectangleImprover {
-		double logNFA;
-		structRec rec;
-	} structRectangleImprover;
+		typedef struct _structRegionRadiusReducer {
+			bool boolean;
+			Mat curMap;
+			structReg reg;
+			structRec rec;
+		} structRegionRadiusReducer;
 
-	typedef struct _structRecVer {
-		double verX[4] = { 0 };
-		double verY[4] = { 0 };
-	} structRecVer;
+		typedef struct _structRectangleImprover {
+			double logNFA;
+			structRec rec;
+		} structRectangleImprover;
 
-	typedef struct _structLSD {
-		Mat lineIm;
-		structLinesInfo *linesInfo;
-		int len_linesInfo;
-	} structLSD;
+		typedef struct _structRecVer {
+			double verX[4] = { 0 };
+			double verY[4] = { 0 };
+		} structRecVer;
 
-	int Comp(const void *p1, const void *p2);
+		typedef struct _compVector {
+			template <typename T>
+			bool operator() (const T& a, const T& b) {
+				return a.value > b.value;
+			}
+		} compVector;
 
-	Mat createMapCache(Mat MapGray, double res);
-	structLSD myLineSegmentDetector(Mat MapGray, int oriMapCol, int oriMapRow, double sca, double sig, double angThre, double denThre, int pseBin);
-	Mat GaussianSampler(Mat image, double sca, double sig);
-	structRegionGrower RegionGrower(int x, int y, Mat banMap, double regDeg, Mat degMap, double degThre);
-	structRec RectangleConverter(structReg reg, Mat magMap, double aliPro, double degThre);
-	structCenterGetter CenterGetter(int regNum, int *regX, int *regY, Mat weiMap);
-	double OrientationGetter(structReg reg, double cenX, double cenY, int *regX, int *regY, Mat weiMap, double degThre);
-	structRefiner Refiner(structReg reg, structRec rec, double denThre, Mat degMap, Mat banMap, Mat curMap, Mat magMap);
-	structRegionRadiusReducer RegionRadiusReducer(structReg reg, structRec rec, double denThre, Mat curMap, Mat magMap);
-	structRectangleImprover RectangleImprover(structRec rec, Mat degMap, double logNT);
-	double LogGammaCalculator(int x);
+		structRec* recSaveDisp;
+		
+		const double pi = 4.0 * atan(1.0), pi2 = 2 * pi;
+		int oriMapCol, oriMapRow, newMapCol, newMapRow;
+		double sca, sig, pseBin, logNT, aliPro;
+		double angThre, denThre, gradThre, regThre;
+		Mat usedMap, degMap, magMap;
+
+		Mat GaussianSampler(Mat image, double sca, double sig);
+		structRegionGrower RegionGrower(int x, int y, double regDeg, double degThre);
+		structRec RectangleConverter(const structReg reg, const double degThre);
+		structCenterGetter CenterGetter(const int regNum, const int* regX, const int* regY);
+		double OrientationGetter(const structReg reg, const double cenX, const double cenY, const int* regX, const int* regY, const double degThre);
+		structRefiner Refiner(structReg reg, structRec rec, Mat curMap);
+		double RectangleNFACalculator(structRec rec);
+		structRegionRadiusReducer RegionRadiusReducer(structReg reg, structRec rec, Mat curMap);
+		structRectangleImprover RectangleImprover(structRec rec);
+	};
 }
 
 #endif // !_MYLSD_
-
-

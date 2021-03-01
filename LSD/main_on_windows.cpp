@@ -10,7 +10,7 @@
 using namespace cv;
 using namespace std;
 
-myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, Mat mapCache, structPosition lastPose,\
+myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::LSD::structLSD LSD, Mat mapCache, structPosition lastPose,\
 	Eigen::Matrix<double, 9, 1> kalman_x, Eigen::Matrix<double, 9, 9> kalman_P, structPosition ScanPose, Mat Display);
 
 int main() {
@@ -18,10 +18,11 @@ int main() {
 	time_start = clock();
 	//路径
 	//string path1 = "../line_data/data0/";
-	string path1 = "../data_20190523/data/";
+	//string path1 = "../data_20190523/data/";
 	//string path1 = "../data_20190514/data_f4key/data10/";
 	//string path1 = "../data_20190513/data_f3key/data9/";
 	//string path1 = "../line_data/data9/";
+	string path1 = "../data_20210223/3236/";
 	string path2;
 	const char *path;
 	//读取mapParam 地图信息
@@ -64,12 +65,21 @@ int main() {
 	//}
 
 	//计算mapCache，用于特征匹配的先验概率
-	Mat mapCache = mylsd::createMapCache(mapValue, mapParam.mapResol);
+	mylsd::LSD lsd = mylsd::LSD();
+	//Mat mapCache = lsd.createMapCache(mapValue, mapParam.mapResol);
+	Mat mapCache;
 
 	//LineSegmentDetector 提取地图边界直线信息
-	mylsd::structLSD LSD = mylsd::myLineSegmentDetector(mapValue, oriMapCol, oriMapRow, lsd_sca, lsd_sig, lsd_angThre, lsd_denThre, pseBin);
+	double last_time = clock();
+	mylsd::LSD::structLSD LSD = lsd.myLineSegmentDetector(mapValue, oriMapCol, oriMapRow, lsd_sca, lsd_sig, lsd_angThre, lsd_denThre, pseBin);
+	printf("%lf\n", (clock() - last_time) / CLOCKS_PER_SEC);
 	Mat Display = mapValue.clone();
 	resize(Display, Display, Size(0, 0), 0.5, 0.5);
+
+#ifdef drawPicture
+	imshow("temp", LSD.lineIm);
+#endif
+	waitKey(0);
 
 	//printf("%d %d\n", Display.size[0], Display.size[1]);
 	//imshow("mapCache", mapCache);
@@ -194,7 +204,7 @@ int main() {
 	return 0;
 }
 
-myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::structLSD LSD, Mat mapCache, structPosition lastPose,\
+myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::LSD::structLSD LSD, Mat mapCache, structPosition lastPose,\
 	Eigen::Matrix<double, 9, 1> kalman_x, Eigen::Matrix<double, 9, 9> kalman_P, structPosition ScanPose, Mat Display) {
 	//将数据格式转为FeatureAssociation格式
 	myfa::structFAInput FA;

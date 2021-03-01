@@ -172,3 +172,4 @@ line_data/
 *.sln
 *.vcxproj
 *.xlsx
+.idea/
