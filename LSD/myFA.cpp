@@ -364,8 +364,8 @@ namespace myfa {
 
 		int cnt;
 		for (cnt = 0; cnt < RSI.numScanImPoint; cnt++) {
-			int x = (int)round(RSI.rotateScanImPoint[cnt].x);
-			int y = (int)round(RSI.rotateScanImPoint[cnt].y);
+			int x = round(RSI.rotateScanImPoint[cnt].x);
+			int y = round(RSI.rotateScanImPoint[cnt].y);
 			//printf("%d %d %d %d\n", FAInput->mapIm.size[0], FAInput->mapIm.size[1], y, x);
 			//printf("%f %f\n", RSI.rotateScanImPoint[cnt].y, RSI.rotateScanImPoint[cnt].x);
 			if (y >= 0 && y < FAInput->mapCache.size[0] && x >= 0 && x < FAInput->mapCache.size[1]) {
@@ -377,7 +377,7 @@ namespace myfa {
 					numMaxDistPoint += 1;
 				}
 				else {
-					sumValidDist += FAInput->mapCache.ptr<double>(y)[x];
+					sumValidDist += FAInput->mapCache.ptr<float>(y)[x];
 					numValidDistPoint += 1;
 				}
 			}

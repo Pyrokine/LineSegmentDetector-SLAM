@@ -17,11 +17,9 @@ int main() {
 	clock_t time_start, time_end;
 	time_start = clock();
 	//路径
-	//string path1 = "../line_data/data0/";
 	//string path1 = "../data_20190523/data/";
 	//string path1 = "../data_20190514/data_f4key/data10/";
 	//string path1 = "../data_20190513/data_f3key/data9/";
-	//string path1 = "../line_data/data9/";
 	string path1 = "../data_20210223/3236/";
 	string path2;
 	const char *path;
@@ -66,8 +64,9 @@ int main() {
 
 	//计算mapCache，用于特征匹配的先验概率
 	mylsd::LSD lsd = mylsd::LSD();
-	//Mat mapCache = lsd.createMapCache(mapValue, mapParam.mapResol);
-	Mat mapCache;
+	Mat mapCache = lsd.createMapCache(mapValue, mapParam.mapResol);
+	imshow("mapCache", mapCache);
+	//waitKey(0);
 
 	//LineSegmentDetector 提取地图边界直线信息
 	double last_time = clock();

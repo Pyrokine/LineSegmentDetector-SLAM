@@ -61,11 +61,10 @@ namespace mylsd {
 		} nodeBinCell;
 
 		typedef struct _structCache {
-			int src_i;
-			int src_j;
-			int cur_i;
-			int cur_j;
-			struct _structCache* next;
+			int srcY;
+			int srcX;
+			int curY;
+			int curX;
 		} structCache;
 
 		typedef struct _structReg {
@@ -75,13 +74,12 @@ namespace mylsd {
 			double deg;
 			vector<int> regPts_x;
 			vector<int> regPts_y;
-			struct _structReg* next;
 		} structReg;
 
 		typedef struct _structRegionGrower {
 			Mat curMap;
 			structReg reg;
-		}structRegionGrower;
+		} structRegionGrower;
 
 		typedef struct _structRectangleConverter {
 			double x1;
@@ -96,20 +94,19 @@ namespace mylsd {
 			double dy;
 			double p;
 			double prec;
-			struct _structRectangleConverter* next;
-		}structRec;
+		} structRec;
 
 		typedef struct _structCenterGetter {
 			double cenX;
 			double cenY;
-		}structCenterGetter;
+		} structCenterGetter;
 
 		typedef struct _structRefiner {
 			bool boolean;
 			Mat curMap;
 			structReg reg;
 			structRec rec;
-		}structRefiner;
+		} structRefiner;
 
 		typedef struct _structRegionRadiusReducer {
 			bool boolean;
@@ -134,8 +131,6 @@ namespace mylsd {
 				return a.value > b.value;
 			}
 		} compVector;
-
-		structRec* recSaveDisp;
 		
 		const double pi = 4.0 * atan(1.0), pi1_5 = 1.5 * pi, pi2 = 2 * pi;
 		int oriMapCol, oriMapRow, newMapCol, newMapRow;

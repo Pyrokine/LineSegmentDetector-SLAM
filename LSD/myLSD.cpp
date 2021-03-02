@@ -94,24 +94,25 @@ namespace mylsd {
 		sort(binCell.begin(), binCell.end(), compVector());
 		//printf("03 %lf\n", (clock() - last_time) / CLOCKS_PER_SEC);
 
-		// 按照排序顺序 依次搜索种子像素
-		logNT = 5.0 * (log10(newMapRow) + log10(newMapCol)) / 2.0;//测试数量的对数值
+		// 
+		logNT = 5.0 * (log10(newMapRow) + log10(newMapCol)) / 2.0;// 测试数量的对数值
 		regThre = -logNT / log10(angThre / 180.0); //小区域的阈值
 		aliPro = angThre / 180.0;
 
 		// 记录生长区域和矩形
 		structRec* recSaveHead = (structRec*)malloc(sizeof(structRec));
 		structRec* recSaveNow = recSaveHead;
+		vector<structRec> recSave;
 
 #ifdef drawPicture
-		Mat lineIm = Mat::zeros(oriMapRow, oriMapCol, CV_8UC1);//记录直线图像
-		Mat lineImColor = Mat::zeros(oriMapRow, oriMapCol, CV_8UC3);//记录直线图像
+		Mat lineIm = Mat::zeros(oriMapRow, oriMapCol, CV_8UC1);// 记录直线灰白图像
+		Mat lineImColor = Mat::zeros(oriMapRow, oriMapCol, CV_8UC3);// 记录直线彩色图像
 #endif 
 		
 		//printf("1 %lf\n", (clock() - last_time2) / CLOCKS_PER_SEC);
 		//last_time2 = clock();
 
-		// 从最大梯度开始增长
+		// 按照排序顺序，依次搜索种子像素，从最大梯度开始增长
 		double t1 = 0, t2 = 0, t3 = 0, t4 = 0, t5 = 0;
 		int regCnt = 0;
 		for (int i = 0; i < binCell.size(); i++) {
@@ -173,10 +174,7 @@ namespace mylsd {
 			}
 
 			// 保存所找到的直线支持区域和拟合矩形
-			structRec* tempRec = (structRec*)malloc(sizeof(structRec));
-			recSaveNow[0] = rec;
-			recSaveNow[0].next = tempRec;
-			recSaveNow = tempRec;
+			recSave.push_back(rec);
 			regCnt++;
 			//t5 += clock() - last_time;
 		}
@@ -185,15 +183,13 @@ namespace mylsd {
 
 		// 将所提取到的直线按照像素点标记在图像矩阵中
 		Vec3b color;
-		recSaveNow = recSaveHead;
 		structLinesInfo* linesInfo = (structLinesInfo*)malloc(regCnt * sizeof(structLinesInfo));
 		for (int i = 0; i < regCnt; i++) {
 			// 获得直线的端点坐标
-			double x1 = recSaveNow[0].x1;
-			double y1 = recSaveNow[0].y1;
-			double x2 = recSaveNow[0].x2;
-			double y2 = recSaveNow[0].y2;
-			recSaveNow = recSaveNow[0].next;
+			double x1 = recSave[i].x1;
+			double y1 = recSave[i].y1;
+			double x2 = recSave[i].x2;
+			double y2 = recSave[i].y2;
 			// 求取直线斜率
 			double k = (y2 - y1) / (x2 - x1);
 			double ang = atand(k);
@@ -207,63 +203,49 @@ namespace mylsd {
 			// 确定直线X坐标轴和Y坐标轴的跨度
 			int xLow, xHigh, yLow, yHigh;
 			if (x1 > x2) {
-				xLow = (int)floor(x2);
-				xHigh = (int)ceil(x1);
+				xLow = floor(x2);
+				xHigh = ceil(x1);
 			}
 			else {
-				xLow = (int)floor(x1);
-				xHigh = (int)ceil(x2);
+				xLow = floor(x1);
+				xHigh = ceil(x2);
 			}
 			if (y1 > y2) {
-				yLow = (int)floor(y2);
-				yHigh = (int)ceil(y1);
+				yLow = floor(y2);
+				yHigh = ceil(y1);
 			}
 			else {
-				yLow = (int)floor(y1);
-				yHigh = (int)ceil(y2);
+				yLow = floor(y1);
+				yHigh = ceil(y2);
 			}
 			double xRang = abs(x2 - x1), yRang = abs(y2 - y1);
-			// 确定直线跨度较大的坐标轴作为采样主轴并采样
+			// 确定直线跨度较大的坐标轴作为采样主轴并采样，标记直线像素
 			int xx_len = xHigh - xLow + 1, yy_len = yHigh - yLow + 1;
-			int* xx, * yy;
-			int j;
-			if (xx_len > yy_len) {
-				xx = (int*)malloc(xx_len * sizeof(int));
-				yy = (int*)malloc(xx_len * sizeof(int));
-				for (j = 0; j < xx_len; j++) {
-					xx[j] = j + xLow;
-					yy[j] = (int)round((xx[j] - x1) * k + y1);
-					if (xx[j] < 0 || xx[j] >= oriMapCol || yy[j] < 0 || yy[j] >= oriMapRow) {
-						xx[j] = 0;
-						yy[j] = 0;
-					}
-				}
-			}
-			else {
-				xx = (int*)malloc(yy_len * sizeof(int));
-				yy = (int*)malloc(yy_len * sizeof(int));
-				for (j = 0; j < yy_len; j++) {
-					yy[j] = j + yLow;
-					xx[j] = (int)round((yy[j] - y1) / k + x1);
-					if (xx[j] < 0 || xx[j] >= oriMapCol || yy[j] < 0 || yy[j] >= oriMapRow) {
-						xx[j] = 0;
-						yy[j] = 0;
-					}
-				}
-			}
-			// 标记直线像素
+
 			color[0] = rand() % 255;
 			color[1] = rand() % 255;
 			color[2] = rand() % 255;
-			for (j = 0; j < max(xx_len, yy_len); j++) {
-				if (xx[j] != 0 && yy[j] != 0) {
-					lineIm.ptr<uint8_t>(yy[j])[xx[j]] = 255;
-					lineImColor.ptr<Vec3b>(yy[j])[xx[j]] = color;
+			int j, xx, yy;
+			if (xx_len > yy_len) {
+				for (j = 0; j < xx_len; j++) {
+					xx = j + xLow;
+					yy = round((xx - x1) * k + y1);
+					if (xx >= 0 || xx < oriMapCol || yy >= 0 || yy < oriMapRow) {
+						lineIm.ptr<uint8_t>(yy)[xx] = 255;
+						lineImColor.ptr<Vec3b>(yy)[xx] = color;
+					}
 				}
 			}
-
-			free(xx);
-			free(yy);
+			else {
+				for (j = 0; j < yy_len; j++) {
+					yy = j + yLow;
+					xx = round((yy - y1) / k + x1);
+					if (xx >= 0 || xx < oriMapCol || yy >= 0 || yy < oriMapRow) {
+						lineIm.ptr<uint8_t>(yy)[xx] = 255;
+						lineImColor.ptr<Vec3b>(yy)[xx] = color;
+					}
+				}
+			}
 #endif
 
 			linesInfo[i].k = k;
@@ -291,117 +273,104 @@ namespace mylsd {
 
 	Mat LSD::createMapCache(Mat MapGray, double res) {
 		//计算图中点到最近点的最小距离，在特征匹配时用作先验概率
-		int cell_radius = floor(z_occ_max_dis / res);
+		int cell_radius2 = pow(floor(z_occ_max_dis / res), 2);
 		int height = MapGray.rows, width = MapGray.cols;
-		Mat mapCache = Mat::zeros(height, width, CV_32FC1);
-		Mat mapFlag = Mat::zeros(height, width, CV_32FC1);
+		Mat mapCache = Mat(height, width, CV_32FC1, Scalar(z_occ_max_dis));
+		Mat mapFlag = Mat::zeros(height, width, CV_8UC1);
 
 		structCache* head = (structCache*)malloc(sizeof(structCache));
 		structCache* now = head, * tail;
 
-		int i, j;
-		for (i = 0; i < height; i++) {
-			for (j = 0; j < width; j++) {
-				if (MapGray.ptr<uint8_t>(i)[j] == 1) {
-					structCache* temp = (structCache*)malloc(sizeof(structCache));
-					temp->next = NULL;
-					now->src_i = i;
-					now->src_j = j;
-					now->cur_i = i;
-					now->cur_j = j;
-					now->next = temp;
-					now = temp;
-					mapCache.ptr<float>(i)[j] = 0;
-					mapFlag.ptr<float>(i)[j] = 1;
-				}
-				else {
-					mapCache.ptr<float>(i)[j] = z_occ_max_dis;
-				}
-			}
+		vector<structCache> candidates;
+
+		Mat nonZeroCoordinates;
+		findNonZero(MapGray, nonZeroCoordinates);
+		for (int i = 0; i < nonZeroCoordinates.total(); i++) {
+			structCache temp;
+			temp.srcY = nonZeroCoordinates.at<Point>(i).y;
+			temp.srcX = nonZeroCoordinates.at<Point>(i).x;
+			temp.curY = nonZeroCoordinates.at<Point>(i).y;
+			temp.curX = nonZeroCoordinates.at<Point>(i).x;
+			candidates.push_back(temp);
+			mapCache.ptr<float>(nonZeroCoordinates.at<Point>(i).y)[nonZeroCoordinates.at<Point>(i).x] = 0;
+			mapFlag.ptr<uint8_t>(nonZeroCoordinates.at<Point>(i).y)[nonZeroCoordinates.at<Point>(i).x] = 1;
 		}
 
-		tail = now;
-		now = head;
-		while (now->next != NULL) {
-			int src_i = now->src_i, src_j = now->src_j;
-			int cur_i = now->cur_i, cur_j = now->cur_j;
+		double pnt_now = 0, pnt_end = candidates.size(), distance;
+		int srcY, srcX, curY, curX;
+		while (pnt_now < pnt_end) {
+			srcY = candidates[pnt_now].srcY, srcX = candidates[pnt_now].srcX;
+			curY = candidates[pnt_now].curY, curX = candidates[pnt_now].curX;
 
-			if (cur_i >= 1 && mapFlag.ptr<float>(cur_i - 1)[cur_j] == 0) {
-				double di = abs(cur_i - src_i);
-				double dj = abs(cur_j - src_j);
-				double distance = sqrt(di * di + dj * dj);
+			if (curY >= 1 && mapFlag.ptr<uint8_t>(curY - 1)[curX] == 0) {
+				distance = pow(abs(curY - srcY), 2) + pow(abs(curX - srcX), 2);
 
-				if (distance <= cell_radius) {
-					mapCache.ptr<float>(cur_i - 1)[cur_j] = distance * res;
-					mapFlag.ptr<float>(cur_i - 1)[cur_j] = 1;
-					structCache* temp = (structCache*)malloc(sizeof(structCache));
-					temp->next = NULL;
-					tail->src_i = src_i;
-					tail->src_j = src_j;
-					tail->cur_i = cur_i - 1;
-					tail->cur_j = cur_j;
-					tail->next = temp;
-					tail = temp;
+				if (distance <= cell_radius2) {
+					mapCache.ptr<float>(curY - 1)[curX] = sqrt(distance) * res;
+					mapFlag.ptr<uint8_t>(curY - 1)[curX] = 1;
+
+					structCache temp;
+					temp.srcY = srcY;
+					temp.srcX = srcX;
+					temp.curY = curY - 1;
+					temp.curX = curX;
+					candidates.push_back(temp);
+					pnt_end += 1;
 				}
 			}
 
-			if (cur_j >= 1 && mapFlag.ptr<float>(cur_i)[cur_j - 1] == 0) {
-				double di = abs(cur_i - src_i);
-				double dj = abs(cur_j - src_j);
-				double distance = sqrt(di * di + dj * dj);
+			if (curX >= 1 && mapFlag.ptr<uint8_t>(curY)[curX - 1] == 0) {
+				distance = pow(abs(curY - srcY), 2) + pow(abs(curX - srcX), 2);
 
-				if (distance <= cell_radius) {
-					mapCache.ptr<float>(cur_i)[cur_j - 1] = distance * res;
-					mapFlag.ptr<float>(cur_i)[cur_j - 1] = 1;
-					structCache* temp = (structCache*)malloc(sizeof(structCache));
-					temp->next = NULL;
-					tail->src_i = src_i;
-					tail->src_j = src_j;
-					tail->cur_i = cur_i;
-					tail->cur_j = cur_j - 1;
-					tail->next = temp;
-					tail = temp;
+				if (distance <= cell_radius2) {
+					mapCache.ptr<float>(curY)[curX - 1] = sqrt(distance) * res;
+					mapFlag.ptr<uint8_t>(curY)[curX - 1] = 1;
+
+					structCache temp;
+					temp.srcY = srcY;
+					temp.srcX = srcX;
+					temp.curY = curY;
+					temp.curX = curX - 1;
+					candidates.push_back(temp);
+					pnt_end += 1;
 				}
 			}
 
-			if (cur_i < height - 1 && mapFlag.ptr<float>(cur_i + 1)[cur_j] == 0) {
-				double di = abs(cur_i - src_i);
-				double dj = abs(cur_j - src_j);
-				double distance = sqrt(di * di + dj * dj);
+			if (curY < height - 1 && mapFlag.ptr<uint8_t>(curY + 1)[curX] == 0) {
+				distance = pow(abs(curY - srcY), 2) + pow(abs(curX - srcX), 2);
 
-				if (distance <= cell_radius) {
-					mapCache.ptr<float>(cur_i + 1)[cur_j] = distance * res;
-					mapFlag.ptr<float>(cur_i + 1)[cur_j] = 1;
-					structCache* temp = (structCache*)malloc(sizeof(structCache));
-					temp->next = NULL;
-					tail->src_i = src_i;
-					tail->src_j = src_j;
-					tail->cur_i = cur_i + 1;
-					tail->cur_j = cur_j;
-					tail->next = temp;
-					tail = temp;
+				if (distance <= cell_radius2) {
+					mapCache.ptr<float>(curY + 1)[curX] = sqrt(distance) * res;
+					mapFlag.ptr<uint8_t>(curY + 1)[curX] = 1;
+
+					structCache temp;
+					temp.srcY = srcY;
+					temp.srcX = srcX;
+					temp.curY = curY + 1;
+					temp.curX = curX;
+					candidates.push_back(temp);
+					pnt_end += 1;
 				}
 			}
 
-			if (cur_j < width - 1 && mapFlag.ptr<float>(cur_i)[cur_j + 1] == 0) {
-				double di = abs(cur_i - src_i);
-				double dj = abs(cur_j - src_j);
-				double distance = sqrt(di * di + dj * dj);
+			if (curX < width - 1 && mapFlag.ptr<uint8_t>(curY)[curX + 1] == 0) {
+				distance = pow(abs(curY - srcY), 2) + pow(abs(curX - srcX), 2);
 
-				if (distance <= cell_radius) {
-					mapCache.ptr<float>(cur_i)[cur_j + 1] = distance * res;
-					mapFlag.ptr<float>(cur_i)[cur_j + 1] = 1;
-					structCache* temp = (structCache*)malloc(sizeof(structCache));
-					temp->next = NULL;
-					tail->src_i = src_i;
-					tail->src_j = src_j;
-					tail->cur_i = cur_i;
-					tail->cur_j = cur_j + 1;
-					tail->next = temp;
-					tail = temp;
+				if (distance <= cell_radius2) {
+					mapCache.ptr<float>(curY)[curX + 1] = sqrt(distance) * res;
+					mapFlag.ptr<uint8_t>(curY)[curX + 1] = 1;
+					
+					structCache temp;
+					temp.srcY = srcY;
+					temp.srcX = srcX;
+					temp.curY = curY;
+					temp.curX = curX + 1;
+					candidates.push_back(temp);
+					pnt_end += 1;
 				}
 			}
-			now = now->next;
+
+			pnt_now += 1;
 		}
 
 		return mapCache;
