@@ -30,7 +30,7 @@ namespace mylsd {
 
 		// 图像缩放——高斯降采样
 		//last_time = clock();
-		//Mat GaussImage = GaussianSampler(MapGray, sca, sig); // 这个返回的是double型，同时可以自由设定缩放比例
+		//Mat GaussImage = GaussianSampler(MapGray, sca, sig); // 这个返回的是float型，同时可以自由设定缩放比例
 		Mat GaussImage;
 		pyrDown(MapGray, GaussImage, Size(oriMapCol / 2.0, oriMapRow / 2.0)); // 图像金字塔
 		//printf("01 %lf\n", (clock() - last_time) / CLOCKS_PER_SEC);
@@ -94,23 +94,20 @@ namespace mylsd {
 		sort(binCell.begin(), binCell.end(), compVector());
 		//printf("03 %lf\n", (clock() - last_time) / CLOCKS_PER_SEC);
 
-		// 
 		logNT = 5.0 * (log10(newMapRow) + log10(newMapCol)) / 2.0;// 测试数量的对数值
-		regThre = -logNT / log10(angThre / 180.0); //小区域的阈值
+		regThre = -logNT / log10(angThre / 180.0); // 小区域的阈值
 		aliPro = angThre / 180.0;
-
-		// 记录生长区域和矩形
-		structRec* recSaveHead = (structRec*)malloc(sizeof(structRec));
-		structRec* recSaveNow = recSaveHead;
-		vector<structRec> recSave;
 
 #ifdef drawPicture
 		Mat lineIm = Mat::zeros(oriMapRow, oriMapCol, CV_8UC1);// 记录直线灰白图像
 		Mat lineImColor = Mat::zeros(oriMapRow, oriMapCol, CV_8UC3);// 记录直线彩色图像
 #endif 
-		
+
 		//printf("1 %lf\n", (clock() - last_time2) / CLOCKS_PER_SEC);
 		//last_time2 = clock();
+
+		// 记录生长区域和矩形
+		vector<structRec> recSave;
 
 		// 按照排序顺序，依次搜索种子像素，从最大梯度开始增长
 		double t1 = 0, t2 = 0, t3 = 0, t4 = 0, t5 = 0;
@@ -183,13 +180,15 @@ namespace mylsd {
 
 		// 将所提取到的直线按照像素点标记在图像矩阵中
 		Vec3b color;
-		structLinesInfo* linesInfo = (structLinesInfo*)malloc(regCnt * sizeof(structLinesInfo));
+		vector<structLinesInfo> linesInfo(regCnt);
+
 		for (int i = 0; i < regCnt; i++) {
 			// 获得直线的端点坐标
 			double x1 = recSave[i].x1;
 			double y1 = recSave[i].y1;
 			double x2 = recSave[i].x2;
 			double y2 = recSave[i].y2;
+
 			// 求取直线斜率
 			double k = (y2 - y1) / (x2 - x1);
 			double ang = atand(k);
@@ -218,6 +217,7 @@ namespace mylsd {
 				yLow = floor(y1);
 				yHigh = ceil(y2);
 			}
+
 			double xRang = abs(x2 - x1), yRang = abs(y2 - y1);
 			// 确定直线跨度较大的坐标轴作为采样主轴并采样，标记直线像素
 			int xx_len = xHigh - xLow + 1, yy_len = yHigh - yLow + 1;
@@ -377,54 +377,47 @@ namespace mylsd {
 	}
 
 	Mat LSD::GaussianSampler(Mat image, double sca, double sig) {
-		//输入
-		//sca; 缩放尺度
-		//sig: 高斯模板的标准差
-		//输出
-		//newIm: 经过高斯采样缩放后的图像
-		int prec = 3, xLim = image.cols, yLim = image.rows;
-		int newXLim = (int)floor(xLim * sca);
-		int newYLim = (int)floor(yLim * sca);
+		// 输入
+		// sca;   缩放尺度
+		// sig:   高斯模板的标准差
+		//
+		// 输出
+		// newIm: 经过高斯采样缩放后的图像
+		const int prec = 3, xLim = image.cols, yLim = image.rows;
+		const int newXLim = floor(xLim * sca), newYLim = floor(yLim * sca);
 		Mat auxImage = Mat::zeros(yLim, newXLim, CV_32FC1);
 		Mat newImage = Mat::zeros(newYLim, newXLim, CV_32FC1);
-		//如果是缩小图像则调整标准差的值
+		
+		// 如果是缩小图像则调整标准差的值
 		if (sca < 1.0)
 			sig = sig / sca;
-		//printf("%f\n", sig);
-		//高斯模板大小
-		int h = (int)ceil(sig * sqrt(2.0 * prec * log(10)));
-		int hSize = 1 + 2 * h;
-		int douXLim = xLim * 2;
-		int douYLim = yLim * 2;
-		//x方向采样
-		int x;
-		for (x = 0; x < newXLim; x++) {
-			double xx = x / sca;
-			int xc = (int)floor(xx + 0.5);
-			//确定高斯核中心位置
-			double kerMean = h + xx - xc;
-			double* kerVal = (double*)malloc(hSize * sizeof(double));
-			double kerSum = 0;
-			int k = 0;
+		
+		// 高斯模板大小
+		const int h = ceil(sig * sqrt(2.0 * prec * log(10)));
+		const int hSize = 1 + 2 * h, douXLim = xLim * 2, douYLim = yLim * 2;
 
-			//求当前高斯核（疑似有规律可循 不需反复计算 后面再优化）
-			for (k = 0; k < hSize; k++) {
-				kerVal[k] = (double)exp((-0.5) * pow((k - kerMean) / sig, 2));
-				kerSum += kerVal[k];
+		int x, y, i;
+		// x方向采样
+		for (x = 0; x < newXLim; x++) {
+			const double xx = x / sca;
+			const int xc = floor(xx + 0.5);
+			// 确定高斯核中心位置
+			const double kerMean = h + xx - xc;
+			vector<double> kerVal(hSize);
+			double kerSum = 0;
+
+			// 求当前高斯核（疑似有规律可循 不需反复计算 后面再优化）
+			for (i = 0; i < hSize; i++) {
+				kerVal[i] = exp(-0.5 * pow((i - kerMean) / sig, 2));
+				kerSum += kerVal[i];
 			}
-			//高斯核归一化
-			for (k = 0; k < hSize; k++) {
-				kerVal[k] /= kerSum;
+			// 高斯核归一化
+			for (i = 0; i < hSize; i++) {
+				kerVal[i] /= kerSum;
 			}
-			//用边缘对称的方式进行X坐标高斯滤波
-			int y;
+			// 用边缘对称的方式进行X坐标高斯滤波
 			for (y = 0; y < yLim; y++) {
 				double newVal = 0;
-				int i;
-				structPosition* pixelCache = (structPosition*)malloc(hSize * sizeof(structPosition));
-				for (i = 0; i < hSize; i++) {
-				}
-
 				for (i = 0; i < hSize; i++) {
 					int j = xc - h + i;
 					while (j < 0) {
@@ -439,33 +432,29 @@ namespace mylsd {
 				}
 				auxImage.ptr<float>(y)[x] = round(newVal);
 			}
-		}//end for（x方向采样）
+		}
 
-		//y方向采样
-		int y;
+		// y方向采样
 		for (y = 0; y < newYLim; y++) {
-			double yy = y / sca;
-			int yc = (int)floor(yy + 0.5);
-			//确定高斯核中心位置
-			double kerMean = h + yy - yc;
-			double* kerVal = (double*)malloc(hSize * sizeof(double));
+			const double yy = y / sca;
+			const int yc = floor(yy + 0.5);
+			// 确定高斯核中心位置
+			const double kerMean = h + yy - yc;
+			vector<double> kerVal(hSize);
 			double kerSum = 0;
-			int k = 0;
-			//求当前高斯核
-			for (k = 0; k < hSize; k++) {
-				kerVal[k] = exp((-0.5) * pow((k - kerMean) / sig, 2));
-				kerSum += kerVal[k];
+			// 求当前高斯核
+			for (i = 0; i < hSize; i++) {
+				kerVal[i] = exp(-0.5 * pow((i - kerMean) / sig, 2));
+				kerSum += kerVal[i];
 			}
-			//高斯核归一化
-			for (k = 0; k < hSize; k++) {
-				kerVal[k] /= kerSum;
+			// 高斯核归一化
+			for (i = 0; i < hSize; i++) {
+				kerVal[i] /= kerSum;
 			}
-			//用边缘对称的方式进行Y坐标高斯滤波
-			int x;
+			// 用边缘对称的方式进行Y坐标高斯滤波
 			for (x = 0; x < newXLim; x++)
 			{
 				double newVal = 0;
-				int i;
 				for (i = 0; i < hSize; i++)
 				{
 					int j = yc - h + i;
@@ -481,7 +470,7 @@ namespace mylsd {
 				}
 				newImage.ptr<float>(y)[x] = newVal;
 			}
-		}//end for（y方向采样）
+		}
 
 		return newImage;
 	}
@@ -725,8 +714,8 @@ namespace mylsd {
 			while (i <= RRR.reg.num) {
 				if (sqrt(pow(oriX - RRR.reg.regPts_x[i], 2) + pow(oriY - RRR.reg.regPts_y[i], 2)) > rad) {
 					RRR.curMap.ptr<uint8_t>(RRR.reg.regPts_y[i])[RRR.reg.regPts_x[i]] = 0;
-					RRR.reg.regPts_x[i] = RRR.reg.regPts_x[RRR.reg.num - 1];
-					RRR.reg.regPts_y[i] = RRR.reg.regPts_y[RRR.reg.num - 1];
+					RRR.reg.regPts_x[i] = RRR.reg.regPts_x[RRR.reg.num - 1.0];
+					RRR.reg.regPts_y[i] = RRR.reg.regPts_y[RRR.reg.num - 1.0];
 					RRR.reg.regPts_x.pop_back();
 					RRR.reg.regPts_y.pop_back();
 					i--;

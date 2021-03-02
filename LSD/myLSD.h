@@ -45,7 +45,7 @@ namespace mylsd {
 	public:
 		typedef struct _structLSD {
 			Mat lineIm;
-			structLinesInfo* linesInfo;
+			vector<structLinesInfo> linesInfo;
 			int len_linesInfo;
 		} structLSD;
 

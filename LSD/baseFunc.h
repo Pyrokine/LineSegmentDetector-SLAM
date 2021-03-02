@@ -62,7 +62,7 @@ const double z_occ_max_dis = 1;
 // 激光雷达每圈激光点数
 const int pointPerLoop = 360;
 // LSD输入参数
-const double lsd_sca = 0.5; //缩放参数，默认0.3，修改需要手动计算新高斯核
+const double lsd_sca = 0.3; //缩放参数，默认0.3，修改需要手动计算新高斯核
 const double lsd_sig = 0.6; //高斯核参数，默认0.6
 const double lsd_angThre = 22.5; //角度阈值，默认22.5，单位：度
 const double lsd_denThre = 0.7; //密度阈值，默认0.7
