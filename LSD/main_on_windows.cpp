@@ -14,25 +14,25 @@ myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::LSD::structLSD 
 	Eigen::Matrix<double, 9, 1> kalman_x, Eigen::Matrix<double, 9, 9> kalman_P, structPosition ScanPose, Mat Display);
 
 int main() {
-	clock_t time_start, time_end;
+	double time_start, time_end;
 	time_start = clock();
-	//Â·¾¶
+	// æœ¬åœ°æ•°æ®è·¯å¾„
 	//string path1 = "../data_20190523/data/";
 	//string path1 = "../data_20190514/data_f4key/data10/";
 	//string path1 = "../data_20190513/data_f3key/data9/";
-	string path1 = "../data_20210223/3236/";
+	string path1 = "../data_20210223/8219/";
 	string path2;
 	const char *path;
-	//¶ÁÈ¡mapParam µØÍ¼ĞÅÏ¢
+	// è¯»å–åœ°å›¾å‚æ•°
 	path2 = path1 + "mapParam.txt";
 	path = path2.data();
 	FILE *fp = fopen(path, "r");
 	structMapParam mapParam;
-	fscanf(fp, "%d %d %lf %lf %lf", &mapParam.oriMapCol, &mapParam.oriMapRow, &mapParam.mapResol, &mapParam.mapOriX, &mapParam.mapOriY);
+	fscanf_s(fp, "%d %d %lf %lf %lf", &mapParam.oriMapCol, &mapParam.oriMapRow, &mapParam.mapResol, &mapParam.mapOriX, &mapParam.mapOriY);
 	fclose(fp);
 	int oriMapCol = mapParam.oriMapCol, oriMapRow = mapParam.oriMapRow;
 	
-	//¶ÁÈ¡mapValue µØÍ¼ÏñËØÊı¾İ
+	// è¯»å–æ …æ ¼åœ°å›¾
 	int cnt_row, cnt_col;
 	path2 = path1 + "mapValue.txt";
 	path = path2.data();
@@ -41,19 +41,19 @@ int main() {
 	int max = 0;
 	for (cnt_row = 0; cnt_row < oriMapRow; cnt_row++)
 		for (cnt_col = 0; cnt_col < oriMapCol; cnt_col++)
-			fscanf(fp, "%d", &mapValue.ptr<uint8_t>(cnt_row)[cnt_col]);
+			fscanf_s(fp, "%d", &mapValue.ptr<uint8_t>(cnt_row)[cnt_col]);
 	fclose(fp);
 	imshow("1", mapValue);
 	//waitKey(1);
 
-	//¶ÁÈ¡Odometry Àï³Ì¼ÆÊı¾İ
+	// è¯»å–é‡Œç¨‹è®¡æ•°æ®
 	vector<structPosition> Odom;
 	path2 = path1 + "Odom.txt";
 	path = path2.data();
 	fp = fopen(path, "r");
 	while (!feof(fp)) {
 		structPosition tempOdom;
-		fscanf(fp, "%lf %lf %lf", &tempOdom.x, &tempOdom.y, &tempOdom.ang);
+		fscanf_s(fp, "%lf %lf %lf", &tempOdom.x, &tempOdom.y, &tempOdom.ang);
 		Odom.push_back(tempOdom);
 	}
 	fclose(fp);
@@ -62,30 +62,30 @@ int main() {
 	//	printf("%d : %f %f %f\n", cnt_row, Odom[cnt_row].x, Odom[cnt_row].y, Odom[cnt_row].ang);
 	//}
 
-	//¼ÆËãmapCache£¬ÓÃÓÚÌØÕ÷Æ¥ÅäµÄÏÈÑé¸ÅÂÊ
+	// åˆ›å»ºæ¦‚ç‡åœ°å›¾
 	mylsd::LSD lsd = mylsd::LSD();
 	Mat mapCache = lsd.createMapCache(mapValue, mapParam.mapResol);
 	imshow("mapCache", mapCache);
 	//waitKey(0);
 
-	//LineSegmentDetector ÌáÈ¡µØÍ¼±ß½çÖ±ÏßĞÅÏ¢
+	// LineSegmentDetectoræå–ç›´çº¿ä¿¡æ¯
 	double last_time = clock();
 	mylsd::LSD::structLSD LSD = lsd.myLineSegmentDetector(mapValue, oriMapCol, oriMapRow, lsd_sca, lsd_sig, lsd_angThre, lsd_denThre, pseBin);
-	printf("%lf\n", (clock() - last_time) / CLOCKS_PER_SEC);
+	std::printf("%lf\n", (clock() - last_time) / CLOCKS_PER_SEC);
 	Mat Display = mapValue.clone();
 	resize(Display, Display, Size(0, 0), 0.5, 0.5);
 
 #ifdef drawPicture
 	imshow("temp", LSD.lineIm);
 #endif
-	waitKey(0);
+	cv::waitKey(0);
 
 	//printf("%d %d\n", Display.size[0], Display.size[1]);
 	//imshow("mapCache", mapCache);
 	//imshow("Display", Display);
 	//waitKey(0);
 
-	//³õÊ¼»¯ÔË¶¯¹ı³Ì
+	// åˆå§‹åŒ–æ— è¿¹å¡å°”æ›¼æ»¤æ³¢
 	structPosition lastPose;
 	lastPose.x = -1;
 	lastPose.y = -1;
@@ -103,7 +103,7 @@ int main() {
 				0, 0, 0, 0, 0, 0, 0, 0.1, 0,
 				0, 0, 0, 0, 0, 0, 0, 0, 0.1;
 
-	//¶ÁÈ¡À×´ïĞÅÏ¢
+	// è¯»å–æ¿€å…‰ç‚¹äº‘æ•°æ®
 	path2 = path1 + "Lidar.txt";
 	path = path2.data();
 	fp = fopen(path, "r");
@@ -114,15 +114,15 @@ int main() {
 	while (!feof(fp)) {
 		len_lp = 0;
 		bool is_EOF = false;
-		printf("µÚ%dÖ¡:\n", ++cnt_frame);
-		//Ã¿Ö¡×î¶à360Ö¡Êı¾İ Ñ­»·¶ÁÈ¡£¨ÊäÈë£©
+		std::printf("ï¿½ï¿½%dÖ¡:\n", ++cnt_frame);
+		// æ¯å¸§360åº¦æ•°æ®
 		for (i = 0; i < pointPerLoop; i++) {
 			double val1, val2;
 			if (feof(fp)) {
 				is_EOF = true;
 				break;
 			}
-			fscanf(fp, "%lf%lf", &val1, &val2);
+			fscanf_s(fp, "%lf%lf", &val1, &val2);
 
 			if (val1 != INFINITY) {
 				lidarPointPolar[len_lp].range = val1;
@@ -132,7 +132,7 @@ int main() {
 			}
 		}
 		if (is_EOF == false) {
-			//Æ¥ÅäÀ×´ïÌØÕ÷µ½µØÍ¼ÌØÕ÷ ·µ»ØÏñËØ×ø±êºÍÕæÊµ×ø±ê
+			// æå–æ¿€å…‰ç‚¹äº‘ç›´çº¿ä¿¡æ¯
 			myrdp::structFeatureScan FS = FeatureScan(mapParam, lidarPointPolar, len_lp, rdp_leastPoint, rdp_threLine, rdp_leastDist);
 			//imshow("RDP", FS.lineIm);
 			
@@ -153,9 +153,9 @@ int main() {
 				theta /= angRotate.size();
 
 				structPosition tempScanPose;
-				tempScanPose.x = (Odom[cnt_frame].x - Odom[cnt_frame - 1].x) / mapParam.mapResol;
-				tempScanPose.y = (Odom[cnt_frame].y - Odom[cnt_frame - 1].y) / mapParam.mapResol;
-				tempScanPose.ang = atand(Odom[cnt_frame].ang - Odom[cnt_frame - 1].ang);
+				tempScanPose.x = (Odom[cnt_frame].x - Odom[cnt_frame - 1.0].x) / mapParam.mapResol;
+				tempScanPose.y = (Odom[cnt_frame].y - Odom[cnt_frame - 1.0].y) / mapParam.mapResol;
+				tempScanPose.ang = atand(Odom[cnt_frame].ang - Odom[cnt_frame - 1.0].ang);
 				ScanPose.x = tempScanPose.x * cosd(theta) - tempScanPose.y * sind(theta);
 				ScanPose.y = tempScanPose.y * sind(theta) + tempScanPose.y * cosd(theta);
 				ScanPose.ang = tempScanPose.ang;
@@ -169,7 +169,7 @@ int main() {
 			lastPose.x = FA.kalman_x(0);
 			lastPose.y = FA.kalman_x(1);
 			lastPose.ang = FA.kalman_x(2);
-			printf("x:%f y:%f theta:%f\n\n", kalman_x(0), kalman_x(1), theta);
+			std::printf("x:%f y:%f theta:%f\n\n", kalman_x(0), kalman_x(1), theta);
 
 			double angDiff = FA.kalman_x(2) - atand(Odom[cnt_frame].ang);
 			if (abs(angDiff) > 90 && cnt_frame == 1)
@@ -180,11 +180,11 @@ int main() {
 			}
 			angRotate.push_back(angDiff);
 
-			//½«Í¼Ïñ×ø±ê¼ÓÈëµØÍ¼ÖĞ
+			// ç»˜åˆ¶è·¯å¾„
 			circle(Display, Point((int)kalman_x(0) / 2, (int)kalman_x(1) / 2), 2, Scalar(255, 255, 255));
 			//line(Display, Point((int)kalman_x(0), (int)kalman_x(1)), Point((int)kalman_x(0) + ScanPose.x, (int)kalman_x(1) + ScanPose.y), Scalar(255, 255, 255));
 			imshow("Display", Display);
-			waitKey(1);
+			cv::waitKey(1);
 		}
 		else
 			destroyWindow("Display");
@@ -196,19 +196,19 @@ int main() {
 
 	//imshow("MapGray", mapValue);
 	time_end = clock();
-	printf("time = %lf\n", (double)(time_end - time_start) / CLOCKS_PER_SEC);
+	std::printf("time = %lf\n", (time_end - time_start) / CLOCKS_PER_SEC);
 	//imshow("lineIm", LSD.lineIm);
-	waitKey(0);
-	destroyAllWindows();
+	cv::waitKey(0);
+	cv::destroyAllWindows();
 	return 0;
 }
 
 myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::LSD::structLSD LSD, Mat mapCache, structPosition lastPose,\
 	Eigen::Matrix<double, 9, 1> kalman_x, Eigen::Matrix<double, 9, 9> kalman_P, structPosition ScanPose, Mat Display) {
-	//½«Êı¾İ¸ñÊ½×ªÎªFeatureAssociation¸ñÊ½
+	// æ•°æ®æ ¼å¼è½¬æ¢
 	myfa::structFAInput FA;
 	int i;
-	//scanLinesInfo
+	// scanLinesInfo
 	FA.scanLinesInfo.resize(FS.len_linesInfo);
 	for (i = 0; i < FS.len_linesInfo; i++) {
 		FA.scanLinesInfo[i].k = FS.linesInfo[i].k;
@@ -221,7 +221,7 @@ myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::LSD::structLSD 
 		FA.scanLinesInfo[i].y2 = FS.linesInfo[i].y2;
 		FA.scanLinesInfo[i].len = FS.linesInfo[i].len;
 	}
-	//mapLinesInfo
+	// mapLinesInfo
 	FA.mapLinesInfo.resize(LSD.len_linesInfo);
 	for (i = 0; i < LSD.len_linesInfo; i++) {
 		FA.mapLinesInfo[i].k = LSD.linesInfo[i].k;
@@ -234,7 +234,7 @@ myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::LSD::structLSD 
 		FA.mapLinesInfo[i].y2 = LSD.linesInfo[i].y2;
 		FA.mapLinesInfo[i].len = LSD.linesInfo[i].len;
 	}
-	//lidarPos
+	// lidarPos
 	FA.lidarPose.x = (int)round(FS.lidarPos.x);
 	FA.lidarPose.y = (int)round(FS.lidarPos.y);
 	//printf("x:%lf y:%lf\n", FS.lidarPos.x, FS.lidarPos.y);
