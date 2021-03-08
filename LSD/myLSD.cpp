@@ -11,6 +11,7 @@ namespace mylsd {
 		sca = _sca, sig = _sig, angThre = _angThre, denThre = _denThre, pseBin = _pseBin;
 
 		//double last_time, last_time2 = clock();
+		sca = 200.0f / min(oriMapCol, oriMapRow);
 		newMapCol = floor(oriMapCol * sca);
 		newMapRow = floor(oriMapRow * sca);
 		// 格式化地图
@@ -30,9 +31,9 @@ namespace mylsd {
 
 		// 图像缩放——高斯降采样
 		//last_time = clock();
-		//Mat GaussImage = GaussianSampler(MapGray, sca, sig); // 这个返回的是float型，同时可以自由设定缩放比例
-		Mat GaussImage;
-		pyrDown(MapGray, GaussImage, Size(ceil(oriMapCol / 2.0), ceil(oriMapRow / 2.0))); // 图像金字塔，2的幂次倍缩放（应该是）
+		Mat GaussImage = GaussianSampler(MapGray); // 这个返回的是float型，同时可以自由设定缩放比例
+		//Mat GaussImage;
+		//pyrDown(MapGray, GaussImage, Size(ceil(oriMapCol / 2.0), ceil(oriMapRow / 2.0))); // 图像金字塔，2的幂次倍缩放（应该是）
 		//printf("01 %lf\n", (clock() - last_time) / CLOCKS_PER_SEC);
 
 #ifdef drawPicture
@@ -53,19 +54,22 @@ namespace mylsd {
 
 		//Mat degMap = Mat::zeros(newMapRow, newMapCol, CV_32FC1);//level-line场方向
 		//Mat magMap = Mat::zeros(newMapRow, newMapCol, CV_32FC1);//记录每点的梯度
-		float degThre = angThre / 180.0f * pi; // 角度阈值
+		const float degThre = angThre / 180.0f * pi; // 角度阈值
 		gradThre = 2.0f / sin(degThre); // 梯度阈值
 
 		// 计算梯度和level-line场方向并储存梯度到容器
 		//last_time = clock();
-		vector<nodeBinCell> binCell;
-		float maxGrad = 0, gradX, gradY, valueMagnitude, valueDegree, A, B, C, D;
-		for (int y = 1; y < newMapRow; y++) {
-			for (int x = 1; x < newMapCol; x++) {
-				A = GaussImage.ptr<uint8_t>(y)[x];
-				B = GaussImage.ptr<uint8_t>(y)[x - 1];
-				C = GaussImage.ptr<uint8_t>(y - 1)[x];
-				D = GaussImage.ptr<uint8_t>(y - 1)[x - 1];
+		vector<vector<nodeBinCell>> binCell(256);
+		float gradX, gradY, valueMagnitude, valueDegree, A, B, C, D;
+		// 最外侧1个像素标记为used，区域增长时可以减少判断时间
+		for (int y = 1; y < newMapRow - 1; y++) {
+			for (int x = 1; x < newMapCol - 1; x++) {
+				// D C
+				// B A
+				A = (float)GaussImage.ptr<float>(y)[x];
+				B = (float)GaussImage.ptr<float>(y)[x - 1];
+				C = (float)GaussImage.ptr<float>(y - 1)[x];
+				D = (float)GaussImage.ptr<float>(y - 1)[x - 1];
 				gradX = (B + D - A - C) / 2.0f;
 				gradY = (C + D - A - B) / 2.0f;
 
@@ -79,10 +83,10 @@ namespace mylsd {
 					usedMap2[y][x] = 0;
 				}
 
-				maxGrad = max(maxGrad, valueMagnitude);
 				valueDegree = atan2(gradX, -gradY);
-				if (abs(valueDegree - pi) < 0.000001f)
+				if (abs(valueDegree - pi) < 0.000001f) {
 					valueDegree = 0;
+				}
 				
 				if (abs(valueDegree) > 0.000001f) {
 					// 仅在0~pi的弧度之间考虑矩形角度
@@ -93,11 +97,12 @@ namespace mylsd {
 				
 				//degMap.ptr<float>(y)[x] = valueDegree;
 
-				nodeBinCell tempNode;
-				tempNode.value = valueMagnitude;
-				tempNode.x = x;
-				tempNode.y = y;
-				binCell.push_back(tempNode);
+				// valueMagnitude的取值范围为0-255,直接伪排序
+				nodeBinCell tempNode = {
+					x,
+					y 
+				};
+				binCell[(int)valueMagnitude].push_back(tempNode);
 			}
 		}
 		GaussImage.release();
@@ -113,186 +118,97 @@ namespace mylsd {
 
 		//printf("02 %lf\n", (clock() - last_time) / CLOCKS_PER_SEC);
 
-		// 梯度值从大到小排序
-		//last_time = clock();
-		sort(binCell.begin(), binCell.end(), compVector());
-		//printf("03 %lf\n", (clock() - last_time) / CLOCKS_PER_SEC);
-
 		logNT = 5.0f * (log10f(newMapRow) + log10f(newMapCol)) / 2.0f;// 测试数量的对数值
 		regThre = -logNT / log10f(angThre / 180.0f); // 小区域的阈值
 		aliPro = angThre / 180.0f;
 
 #ifdef drawPicture
-		Mat lineIm = Mat::zeros(oriMapRow, oriMapCol, CV_8UC1);// 记录直线灰白图像
-		Mat lineImColor = Mat::zeros(oriMapRow, oriMapCol, CV_8UC3);// 记录直线彩色图像
+		lineIm = Mat::zeros(oriMapRow, oriMapCol, CV_8UC1);// 记录直线灰白图像
+		lineImColor = Mat::zeros(oriMapRow, oriMapCol, CV_8UC3);// 记录直线彩色图像
 #endif 
 
 		//printf("1 %lf\n", (clock() - last_time2) / CLOCKS_PER_SEC);
 		//last_time2 = clock();
 
-		// 记录生长区域和矩形
-		vector<structRec> recSave;
+		// 记录直线信息
+		vector<structLinesInfo> linesInfo;
 
 		// 按照排序顺序，依次搜索种子像素，从最大梯度开始增长
 		double t1 = 0, t2 = 0, t3 = 0, t4 = 0, t5 = 0;
 		int regCnt = 0, yIdx, xIdx;
-		for (int i = 0; i < binCell.size(); i++) {
-			yIdx = binCell[i].y;
-			xIdx = binCell[i].x;
-			if (usedMap2[yIdx].find(xIdx) == usedMap2[yIdx].end() || usedMap2[yIdx][xIdx] == 2)
-				continue;
+		for (int i = 255; i >= 0; i--) {
+			for (int j = 0; j < binCell[i].size(); j++) {
+				yIdx = binCell[i][j].y;
+				xIdx = binCell[i][j].x;
+				if (usedMap2[yIdx].find(xIdx) == usedMap2[yIdx].end() || usedMap2[yIdx][xIdx] == 2)
+					continue;
 
-			// 区域增长 返回curMap和reg
-			double last_time = clock();
-			structRegionGrower RG = RegionGrower(xIdx, yIdx, FetchDegMapValue(yIdx, xIdx), degThre);
-			t1 += clock() - last_time;
+				// 区域增长 返回curMap和reg
+				double last_time = clock();
+				structRegionGrower RG = RegionGrower(xIdx, yIdx, FetchDegMapValue(yIdx, xIdx), degThre);
+				t1 += clock() - last_time;
 
-			structReg reg = RG.reg;
-			// 删除小区域
-			if (reg.num < regThre)
-				continue;
+				structReg reg = RG.reg;
+				// 删除小区域
+				if (reg.num < regThre)
+					continue;
 
-			// 矩阵近似 返回rec
-			last_time = clock();
-			structRec rec = RectangleConverter(reg, degThre);
-			t2 += clock() - last_time;
+				// 矩阵近似 返回rec
+				last_time = clock();
+				structRec rec = RectangleConverter(reg, degThre);
+				t2 += clock() - last_time;
 
-			// 根据密度阈值，调整区域 返回boolean, curMap, rec, reg
-			last_time = clock();
-			structRefiner RF = Refiner(reg, rec, RG.curMap);
-			t3 += clock() - last_time;
-			reg = RF.reg;
-			rec = RF.rec;
-			if (!RF.boolean) {
-				continue;
-			}
-
-			// 矩形调整 返回logNFA, rec
-			last_time = clock();
-			structRectangleImprover RI = RectangleImprover(rec);
-			rec = RI.rec;
-
-			if (RI.logNFA <= 0) {
-				for (int y = 0; y < newMapRow; y++) {
-					for (auto it = RF.curMap[y].begin(); it != RF.curMap[y].end(); it++) {
-						usedMap2[y][it->first] = 2;
-					}
+				// 根据密度阈值，调整区域 返回boolean, curMap, rec, reg
+				last_time = clock();
+				structRefiner RF = Refiner(reg, rec, RG.curMap);
+				t3 += clock() - last_time;
+				reg = RF.reg;
+				rec = RF.rec;
+				if (!RF.boolean) {
+					continue;
 				}
-				
-				t4 += clock() - last_time;
-				continue;
-			}
-			t4 += clock() - last_time;
 
-			last_time = clock();
-			// 根据缩放尺度重新调整图像中所找到的直线信息
-			if (sca != 1) {
+				// 矩形调整 返回logNFA, rec
+				last_time = clock();
+				structRectangleImprover RI = RectangleImprover(rec);
+				rec = RI.rec;
+
+				if (RI.logNFA <= 0) {
+					for (int y = 0; y < newMapRow; y++) {
+						for (auto it = RF.curMap[y].begin(); it != RF.curMap[y].end(); it++) {
+							usedMap2[y][it->first] = 2;
+						}
+					}
+					t4 += clock() - last_time;
+					continue;
+				}
+				t4 += clock() - last_time;
+
+				last_time = clock();
+				// 根据缩放尺度重新调整图像中所找到的直线信息
 				rec.x1 = (rec.x1 - 1.0f) / sca + 1.0f;
 				rec.y1 = (rec.y1 - 1.0f) / sca + 1.0f;
 				rec.x2 = (rec.x2 - 1.0f) / sca + 1.0f;
 				rec.y2 = (rec.y2 - 1.0f) / sca + 1.0f;
 				rec.wid = (rec.wid - 1.0f) / sca + 1.0f;
-			}
 
-			for (int y = 0; y < newMapRow; y++) {
-				for (auto it = RF.curMap[y].begin(); it != RF.curMap[y].end(); it++) {
-					usedMap2[y].erase(it->first);
+				for (int y = 0; y < newMapRow; y++) {
+					for (auto it = RF.curMap[y].begin(); it != RF.curMap[y].end(); it++) {
+						usedMap2[y].erase(it->first);
+					}
 				}
-			}
 
-			// 保存所找到的直线支持区域和拟合矩形
-			recSave.push_back(rec);
-			regCnt++;
-			t5 += clock() - last_time;
+				// 将所提取到的直线按照像素点标记在图像矩阵中
+				GenerateLinesInfo(linesInfo, rec.x1, rec.y1, rec.x2, rec.y2);
+				regCnt++;
+				t5 += clock() - last_time;
+			}
 		}
 		printf("%lf, %lf, %lf, %lf, %lf\n", t1 / CLOCKS_PER_SEC, t2 / CLOCKS_PER_SEC, t3 / CLOCKS_PER_SEC, t4 / CLOCKS_PER_SEC, t5 / CLOCKS_PER_SEC);
 		//printf("2 %lf\n", (clock() - last_time2) / CLOCKS_PER_SEC);
 
-		// 将所提取到的直线按照像素点标记在图像矩阵中
-		Vec3b color;
-		vector<structLinesInfo> linesInfo(regCnt);
-
-		float x1, y1, x2, y2, k, ang;
-		int orient;
-		for (int i = 0; i < regCnt; i++) {
-			// 获得直线的端点坐标
-			x1 = recSave[i].x1;
-			y1 = recSave[i].y1;
-			x2 = recSave[i].x2;
-			y2 = recSave[i].y2;
-
-			// 求取直线斜率
-			k = (y2 - y1) / (x2 - x1);
-			ang = atand(k);
-			orient = 1;
-			if (ang < 0) {
-				ang += 180.0;
-				orient = -1;
-			}
-
-#ifdef drawPicture
-			// 确定直线X坐标轴和Y坐标轴的跨度
-			int xLow, xHigh, yLow, yHigh;
-			if (x1 > x2) {
-				xLow = floor(x2);
-				xHigh = ceil(x1);
-			}
-			else {
-				xLow = floor(x1);
-				xHigh = ceil(x2);
-			}
-			if (y1 > y2) {
-				yLow = floor(y2);
-				yHigh = ceil(y1);
-			}
-			else {
-				yLow = floor(y1);
-				yHigh = ceil(y2);
-			}
-
-			float xRang = abs(x2 - x1), yRang = abs(y2 - y1);
-			// 确定直线跨度较大的坐标轴作为采样主轴并采样，标记直线像素
-			int xx_len = xHigh - xLow + 1, yy_len = yHigh - yLow + 1;
-
-			color[0] = rand() % 255;
-			color[1] = rand() % 255;
-			color[2] = rand() % 255;
-			int j, xx, yy;
-			if (xx_len > yy_len) {
-				for (j = 0; j < xx_len; j++) {
-					xx = j + xLow;
-					yy = round((xx - x1) * k + y1);
-					if (xx >= 0 || xx < oriMapCol || yy >= 0 || yy < oriMapRow) {
-						lineIm.ptr<uint8_t>(yy)[xx] = 255;
-						lineImColor.ptr<Vec3b>(yy)[xx] = color;
-					}
-				}
-			}
-			else {
-				for (j = 0; j < yy_len; j++) {
-					yy = j + yLow;
-					xx = round((yy - y1) / k + x1);
-					if (xx >= 0 || xx < oriMapCol || yy >= 0 || yy < oriMapRow) {
-						lineIm.ptr<uint8_t>(yy)[xx] = 255;
-						lineImColor.ptr<Vec3b>(yy)[xx] = color;
-					}
-				}
-			}
-#endif
-
-			linesInfo[i].k = k;
-			linesInfo[i].b = (y1 + y2) / 2.0f - k * (x1 + x2) / 2.0f;
-			linesInfo[i].dx = cosd(ang);
-			linesInfo[i].dy = sind(ang);
-			linesInfo[i].x1 = x1;
-			linesInfo[i].y1 = y1;
-			linesInfo[i].x2 = x2;
-			linesInfo[i].y2 = y2;
-			linesInfo[i].len = sqrtf(powf(y2 - y1, 2) + powf(x2 - x1, 2));
-			linesInfo[i].orient = orient;
-		}
 		structLSD returnLSD;
-		returnLSD.linesInfo = linesInfo;
+		returnLSD.linesInfo = move(linesInfo);
 		returnLSD.len_linesInfo = regCnt;
 
 #ifdef drawPicture
@@ -317,7 +233,83 @@ namespace mylsd {
 			return 0;
 	}
 
-	Mat LSD::createMapCache(const Mat& MapGray, const float res) {
+	void LSD::GenerateLinesInfo(vector<structLinesInfo>& linesInfo, const int x1, const int y1, const int x2, const int y2) {
+		// 求取直线斜率
+		const float k = (1.0 * y2 - y1) / (x2 - x1);
+		float ang = atand(k);
+		int orient = 1;
+		if (ang < 0) {
+			ang += 180.0;
+			orient = -1;
+		}
+
+#ifdef drawPicture
+		// 确定直线X坐标轴和Y坐标轴的跨度
+		int xLow, xHigh, yLow, yHigh;
+		if (x1 > x2) {
+			xLow = floor(x2);
+			xHigh = ceil(x1);
+		}
+		else {
+			xLow = floor(x1);
+			xHigh = ceil(x2);
+		}
+		if (y1 > y2) {
+			yLow = floor(y2);
+			yHigh = ceil(y1);
+		}
+		else {
+			yLow = floor(y1);
+			yHigh = ceil(y2);
+		}
+
+		float xRang = abs(x2 - x1), yRang = abs(y2 - y1);
+		// 确定直线跨度较大的坐标轴作为采样主轴并采样，标记直线像素
+		int xx_len = xHigh - xLow + 1, yy_len = yHigh - yLow + 1;
+
+		Vec3b color;
+		color[0] = rand() % 255;
+		color[1] = rand() % 255;
+		color[2] = rand() % 255;
+		int j, xx, yy;
+		if (xx_len > yy_len) {
+			for (j = 0; j < xx_len; j++) {
+				xx = j + xLow;
+				yy = round((xx - x1) * k + y1);
+				if (xx >= 0 || xx < oriMapCol || yy >= 0 || yy < oriMapRow) {
+					lineIm.ptr<uint8_t>(yy)[xx] = 255;
+					lineImColor.ptr<Vec3b>(yy)[xx] = color;
+				}
+			}
+		}
+		else {
+			for (j = 0; j < yy_len; j++) {
+				yy = j + yLow;
+				xx = round((yy - y1) / k + x1);
+				if (xx >= 0 || xx < oriMapCol || yy >= 0 || yy < oriMapRow) {
+					lineIm.ptr<uint8_t>(yy)[xx] = 255;
+					lineImColor.ptr<Vec3b>(yy)[xx] = color;
+				}
+		}
+}
+#endif
+
+		structLinesInfo tempLinesInfo = {
+			k,
+			(y1 + y2) / 2.0f - k * (x1 + x2) / 2.0f,
+			cosd(ang),
+			sind(ang),
+			x1,
+			y1,
+			x2,
+			y2,
+			sqrtf(powf(y2 - y1, 2) + powf(x2 - x1, 2)),
+			orient
+		};
+		linesInfo.push_back(tempLinesInfo);
+	}
+
+	Mat LSD::CreateMapCache(const Mat& MapGray, const float res) {
 		//计算图中点到最近点的最小距离，在特征匹配时用作先验概率
 		const int cell_radius2 = powf(floor(z_occ_max_dis / res), 2);
 		const int height = MapGray.rows, width = MapGray.cols;
@@ -422,6 +414,28 @@ namespace mylsd {
 		return move(mapCache);
 	}
 
+	vector<float> LSD::GenerateGaussianKernel(unordered_map<float, vector<float>>& kernelCache, const float kerMean) {
+		//const int sn = (int)(kerMean * 100);
+		if (kernelCache.find(kerMean) != kernelCache.end()) {
+			return kernelCache[kerMean];
+		}
+		else {
+			float kerSum = 0;
+			vector<float> kerVal(hSize);
+
+			for (int i = 0; i < hSize; i++) {
+				kerVal[i] = exp(-0.5 * pow((i - kerMean) / sig, 2));
+				kerSum += kerVal[i];
+			}
+			// 高斯核归一化
+			for (int i = 0; i < hSize; i++) {
+				kerVal[i] /= kerSum;
+			}
+			kernelCache[kerMean] = kerVal;
+			return kerVal;
+		}
+	}
+
 	Mat LSD::GaussianSampler(const Mat& image) {
 		// 输入
 		// sca;   缩放尺度
@@ -435,37 +449,28 @@ namespace mylsd {
 		Mat newImage = Mat::zeros(newYLim, newXLim, CV_32FC1);
 		
 		// 如果是缩小图像则调整标准差的值
-		if (sca < 1.0)
-			sig = sig / sca;
+		//if (sca < 1.0)
+		sig = sig / sca;
 		
 		// 高斯模板大小
-		const int h = ceil(sig * sqrt(2.0 * prec * log(10)));
-		const int hSize = 1 + 2 * h, douXLim = xLim * 2, douYLim = yLim * 2;
+		const int h = ceil(sig * sqrt(2.0 * prec * log(10))), douXLim = xLim * 2, douYLim = yLim * 2;
+		hSize = 1 + 2 * h;
+		unordered_map<float, vector<float>> kernelCache;
+		vector<float> kerVal;
 
-		int x, y, i;
+		int x, y, i, j, xc, yc;
+		float xx, yy, kerMean, newVal;
+		
 		// x方向采样
 		for (x = 0; x < newXLim; x++) {
-			const float xx = x / sca;
-			const int xc = floor(xx + 0.5);
 			// 确定高斯核中心位置
-			const float kerMean = h + xx - xc;
-			vector<float> kerVal(hSize);
-			float kerSum = 0;
-
-			// 求当前高斯核（疑似有规律可循 不需反复计算 后面再优化）
-			for (i = 0; i < hSize; i++) {
-				kerVal[i] = exp(-0.5 * pow((i - kerMean) / sig, 2));
-				kerSum += kerVal[i];
-			}
-			// 高斯核归一化
-			for (i = 0; i < hSize; i++) {
-				kerVal[i] /= kerSum;
-			}
+			xx = x / sca, xc = floor(xx + 0.5), kerMean = h + xx - xc;
+			kerVal = GenerateGaussianKernel(kernelCache, kerMean);
 			// 用边缘对称的方式进行X坐标高斯滤波
 			for (y = 0; y < yLim; y++) {
-				float newVal = 0;
+				newVal = 0;
 				for (i = 0; i < hSize; i++) {
-					int j = xc - h + i;
+					j = xc - h + i;
 					while (j < 0) {
 						j += douXLim;
 					}
@@ -482,28 +487,14 @@ namespace mylsd {
 
 		// y方向采样
 		for (y = 0; y < newYLim; y++) {
-			const float yy = y / sca;
-			const int yc = floor(yy + 0.5);
 			// 确定高斯核中心位置
-			const float kerMean = h + yy - yc;
-			vector<float> kerVal(hSize);
-			float kerSum = 0;
-			// 求当前高斯核
-			for (i = 0; i < hSize; i++) {
-				kerVal[i] = exp(-0.5 * pow((i - kerMean) / sig, 2));
-				kerSum += kerVal[i];
-			}
-			// 高斯核归一化
-			for (i = 0; i < hSize; i++) {
-				kerVal[i] /= kerSum;
-			}
+			yy = y / sca, yc = floor(yy + 0.5), kerMean = h + yy - yc;
+			kerVal = GenerateGaussianKernel(kernelCache, kerMean);
 			// 用边缘对称的方式进行Y坐标高斯滤波
-			for (x = 0; x < newXLim; x++)
-			{
-				float newVal = 0;
-				for (i = 0; i < hSize; i++)
-				{
-					int j = yc - h + i;
+			for (x = 0; x < newXLim; x++) {
+				newVal = 0;
+				for (i = 0; i < hSize; i++) {
+					j = yc - h + i;
 					while (j < 0) {
 						j += douYLim;
 					}
@@ -518,6 +509,7 @@ namespace mylsd {
 			}
 		}
 
+		auxImage.release();
 		return move(newImage);
 	}
 
@@ -552,25 +544,23 @@ namespace mylsd {
 			for (m = regPts_y[pntNow] - 1; m <= regPts_y[pntNow] + 1; m++) {
 				for (n = regPts_x[pntNow] - 1; n <= regPts_x[pntNow] + 1; n++) {
 					// 检查像素值的状态
-					if (m >= 0 && n >= 0 && m < newMapRow && n < newMapCol) {
-						if ((curMap[m].find(n) == curMap[m].end()) && (usedMap2[m].find(n) != usedMap2[m].end())) {
-							// 检查是当前弧度满足阈值 或是 当前弧度减pi满足阈值
-							curDeg = FetchDegMapValue(m, n);
-							degDif = abs(regDeg - curDeg);
-							if (degDif > pi1_5)
-								degDif = abs(degDif - pi2);
+					if ((curMap[m].find(n) == curMap[m].end()) && (usedMap2[m].find(n) != usedMap2[m].end())) {
+						// 检查是当前弧度满足阈值 或是 当前弧度减pi满足阈值
+						curDeg = FetchDegMapValue(m, n);
+						degDif = abs(regDeg - curDeg);
+						if (degDif > pi1_5)
+							degDif = abs(degDif - pi2);
 
-							if (degDif < degThre) {
-								// 更新统计所得弧度的正弦和余弦值
-								cosDeg += cos(curDeg);
-								sinDeg += sin(curDeg);
-								regDeg = atan2(sinDeg, cosDeg);
-								// 记录当前像素
-								curMap[m][n] = 1;
-								regPts_x.push_back(n);
-								regPts_y.push_back(m);
-								pntEnd++;
-							}
+						if (degDif < degThre) {
+							// 更新统计所得弧度的正弦和余弦值
+							cosDeg += cos(curDeg);
+							sinDeg += sin(curDeg);
+							regDeg = atan2(sinDeg, cosDeg);
+							// 记录当前像素
+							curMap[m][n] = 1;
+							regPts_x.push_back(n);
+							regPts_y.push_back(m);
+							pntEnd++;
 						}
 					}
 				}
@@ -586,8 +576,8 @@ namespace mylsd {
 		reg.regPts_y = move(regPts_y);
 
 		structRegionGrower RG;
-		RG.curMap = curMap;
-		RG.reg = reg;
+		RG.curMap = move(curMap);
+		RG.reg = move(reg);
 
 		return move(RG);
 	}
@@ -604,15 +594,18 @@ namespace mylsd {
 		//
 		// 函数功能：根据区域坐标和像素点的权重，找到区域重心
 		float cenX = 0, cenY = 0, weiSum = 0, pixWei;
+
 		for (int k = 0; k < regNum; k++) {
 			pixWei = FetchMagMapValue(regY[k], regX[k]);
 			cenX += pixWei * regX[k];
 			cenY += pixWei * regY[k];
 			weiSum += pixWei;
 		}
-		structCenterGetter CG;
-		CG.cenX = cenX / weiSum;
-		CG.cenY = cenY / weiSum;
+
+		structCenterGetter CG = {
+			cenX / weiSum,
+			cenY / weiSum
+		};
 
 		return move(CG);
 	}
@@ -739,10 +732,11 @@ namespace mylsd {
 		// 如果满足密度阈值，则直接返回
 		if (den > denThre) {
 			RRR.boolean = true;
-			return RRR;
+			return move(RRR);
 		}
 		// 将原区域生长的初始点作为中心参考点
 		const int oriX = RRR.reg.x, oriY = RRR.reg.y;
+		int i, reg_num = RRR.reg.num;
 		// 选取直线最远两端离重心参考点距离中较大值作为搜索半径
 		const float rad1 = sqrtf(powf(oriX - RRR.rec.x1, 2) + powf(oriY - RRR.rec.y1, 2));
 		const float rad2 = sqrtf(powf(oriX - RRR.rec.x2, 2) + powf(oriY - RRR.rec.y2, 2));
@@ -752,24 +746,25 @@ namespace mylsd {
 			// 以0.75的搜索速度减小搜索半径，减少直线支持区域中的像素数
 			rad *= 0.75;
 			rad_square = rad * rad;
-			int i = 0;
+			i = 0;
 
-			while (i <= RRR.reg.num) {
-				if (sqrtf(powf(oriX - RRR.reg.regPts_x[i], 2) + powf(oriY - RRR.reg.regPts_y[i], 2)) > rad) {
+			while (i <= reg_num) {
+				if (powf(oriX - RRR.reg.regPts_x[i], 2) + powf(oriY - RRR.reg.regPts_y[i], 2) > rad_square) {
 					RRR.curMap[RRR.reg.regPts_y[i]].erase(RRR.reg.regPts_x[i]);
-					RRR.reg.regPts_x[i] = RRR.reg.regPts_x[floor(RRR.reg.num - 1.0)];
-					RRR.reg.regPts_y[i] = RRR.reg.regPts_y[floor(RRR.reg.num - 1.0)];
+					RRR.reg.regPts_x[i] = RRR.reg.regPts_x[reg_num - 1];
+					RRR.reg.regPts_y[i] = RRR.reg.regPts_y[reg_num - 1];
 					RRR.reg.regPts_x.pop_back();
 					RRR.reg.regPts_y.pop_back();
 					i--;
-					RRR.reg.num--;
+					reg_num--;
 				}
 				i++;
 			}
+			RRR.reg.num = reg_num;
 			// 如果直线支持区域中像素数少于2个，则放弃该区域
 			if (RRR.reg.num < 2) {
 				RRR.boolean = false;
-				return RRR;
+				return move(RRR);
 			}
 			// 将获得的直线支持区域转换为最小外接矩形
 			RRR.rec = RectangleConverter(RRR.reg, RRR.rec.prec);
@@ -803,8 +798,8 @@ namespace mylsd {
 			return RF;
 		}
 		const int oriX = RF.reg.x, oriY = RF.reg.y;
-		const float cenDeg = FetchDegMapValue(oriY, oriX);
-		float difSum = 0, squSum = 0, curDeg, degDif, pntNum = 0, wid_square = powf(RF.rec.wid, 2);
+		const float cenDeg = FetchDegMapValue(oriY, oriX), wid_square = powf(RF.rec.wid, 2);
+		float difSum = 0, squSum = 0, curDeg, degDif, pntNum = 0;
 		// 利用离区域生长初始点距离小于矩形宽度的像素进行区域方向阈值重估计
 		for (int i = 0; i < RF.reg.num; i++) {
 			if (powf(oriX - RF.reg.regPts_x[i], 2) + powf(oriY - RF.reg.regPts_y[i], 2) < wid_square) {
@@ -830,7 +825,7 @@ namespace mylsd {
 		// 如果由于新阈值导致生长区域过小则丢弃当前区域
 		if (RF.reg.num < 2) {
 			RF.boolean = false;
-			return RF;
+			return move(RF);
 		}
 		// 重新建立最小外接矩形
 		RF.rec = RectangleConverter(RF.reg, degThre);
@@ -842,7 +837,7 @@ namespace mylsd {
 			RF.curMap = move(RRR.curMap);
 			RF.rec = move(RRR.rec);
 			RF.reg = move(RRR.reg);
-			return RF;
+			return move(RF);
 		}
 		RF.boolean = true;
 		return move(RF);
@@ -860,15 +855,19 @@ namespace mylsd {
 
 		// 找到矩形四个顶点的坐标
 		structRecVer recVer;
-		float verX[4], verY[4], wid_half = rec.wid / 2.0;
-		verX[0] = rec.x1 - rec.dy * wid_half;
-		verX[1] = rec.x2 - rec.dy * wid_half;
-		verX[2] = rec.x2 + rec.dy * wid_half;
-		verX[3] = rec.x1 + rec.dy * wid_half;
-		verY[0] = rec.y1 + rec.dx * wid_half;
-		verY[1] = rec.y2 + rec.dx * wid_half;
-		verY[2] = rec.y2 - rec.dx * wid_half;
-		verY[3] = rec.y1 - rec.dx * wid_half;
+		const float wid_half = rec.wid / 2.0,
+		verX[4] = {
+			rec.x1 - rec.dy * wid_half,
+			rec.x2 - rec.dy * wid_half,
+			rec.x2 + rec.dy * wid_half,
+			rec.x1 + rec.dy * wid_half
+		}, verY[4] = {
+			rec.y1 + rec.dx * wid_half,
+			rec.y2 + rec.dx * wid_half,
+			rec.y2 - rec.dx * wid_half,
+			rec.y1 - rec.dx * wid_half
+		};
+
 		// 将x值最小的点作为1号点，然后逆时针排序其余点
 		int offset, i, j;
 		if (rec.x1 < rec.x2 && rec.y1 <= rec.y2)
@@ -887,15 +886,16 @@ namespace mylsd {
 		// 矩形内所有像素点数 allPixNum
 		const int xRang_len = abs(ceil(recVer.verX[0]) - floor(recVer.verX[2])) + 1;
 
-		vector<float> xRang;
+		vector<float> xRang(xRang_len);
 		for (i = 0; i < xRang_len; i++) {
-			xRang.push_back(i + ceil(recVer.verX[0]));
+			xRang[i] = i + ceil(recVer.verX[0]);
 		}
-		float lineK[4];
-		lineK[0] = (recVer.verY[1] - recVer.verY[0]) / (recVer.verX[1] - recVer.verX[0]);
-		lineK[1] = (recVer.verY[2] - recVer.verY[1]) / (recVer.verX[2] - recVer.verX[1]);
-		lineK[2] = (recVer.verY[2] - recVer.verY[3]) / (recVer.verX[2] - recVer.verX[3]);
-		lineK[3] = (recVer.verY[3] - recVer.verY[0]) / (recVer.verX[3] - recVer.verX[0]);
+		float lineK[4] = {
+			(recVer.verY[1] - recVer.verY[0]) / (recVer.verX[1] - recVer.verX[0]),
+			(recVer.verY[2] - recVer.verY[1]) / (recVer.verX[2] - recVer.verX[1]),
+			(recVer.verY[2] - recVer.verY[3]) / (recVer.verX[2] - recVer.verX[3]),
+			(recVer.verY[3] - recVer.verY[0]) / (recVer.verX[3] - recVer.verX[0])
+		};
 
 		vector<int> yLow, yHigh;
 		// yLow
@@ -935,11 +935,11 @@ namespace mylsd {
 		}
 		// 计算NFA的自然对数值
 		const float aliThre = allPixNum * (coefA * powf(allPixNum, coefB) + coefC);
-		float logNFA2 = -1;
+		float logNFA = -1;
 		if (aliPixNum > aliThre)
-			logNFA2 = 1.0 * aliPixNum / allPixNum;
+			logNFA = 1.0 * aliPixNum / allPixNum;
 
-		return move(logNFA2);
+		return logNFA;
 	}
 
 	LSD::structRectangleImprover LSD::RectangleImprover(structRec& rec) {
@@ -951,9 +951,10 @@ namespace mylsd {
 		// rec：     修正后的矩形结构体
 		//
 		// 函数功能：利用虚警数(NFA, Number of False Alarms)修正区域最小外接矩形
-		structRectangleImprover RI;
-		RI.logNFA = RectangleNFACalculator(rec);
-		RI.rec = move(rec);
+		structRectangleImprover RI = {
+			RectangleNFACalculator(rec),
+			move(rec)
+		};
 		return move(RI);
 	}
 }

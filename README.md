@@ -1,13 +1,13 @@
 # LineSegmentDetector-SLAM
-基于C + CPP + OpenCV4.0 + Eigen3 + pthread实现的LineSegmentDetector定位算法，地图由Karto-Slam构建，OpenCV向下兼容3.0，编译环境为VS19，需要自行建立项目，Windows下主程序为main_on_windows.cpp
+基于C + CPP + OpenCV4 + Eigen3 + pthread实现的LineSegmentDetector定位算法，地图由Karto-Slam构建，OpenCV向下兼容3.0，编译环境为VS19，需要自行建立项目，Windows下主程序为main_on_windows.cpp
 
-LSD算法解释https://www.cnblogs.com/Pyrokine/p/10384930.html
+LSD算法解释：https://www.cnblogs.com/Pyrokine/p/10384930.html
 
-LSD算法动画https://www.bilibili.com/video/av43174965/
+LSD算法动画：https://www.bilibili.com/video/av43174965/
 
-LSD在ROS下使用https://www.cnblogs.com/Pyrokine/p/10730995.html
+LSD在ROS下使用：https://www.cnblogs.com/Pyrokine/p/10730995.html
 
-OpenCV4.0下载链接：https://opencv.org/releases/
+OpenCV4下载链接：https://opencv.org/releases/
 
 Eigen3下载链接：http://eigen.tuxfamily.org/index.php?title=Main_Page
 
@@ -36,3 +36,5 @@ V2.4 在特征匹配myFA中增加了基于pthread的线程池，极大地提高�
 V2.5 增加隐马尔可夫链
 
 V2.6 融合了里程计数据，增加了基于Eigen3的无迹卡尔曼滤波UKF，修复了一些已知的bug
+
+V2.7.x 更新在swift分支上，代码进行了重构，极大地优化了运行速度和内存占用，使算法拥有更高的实用性

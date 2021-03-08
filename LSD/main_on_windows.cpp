@@ -17,11 +17,11 @@ int main() {
 	double time_start, time_end;
 	time_start = clock();
 	// 本地数据路径
-	//string path1 = "../data_20190523/data/";
-	//string path1 = "../data_20190514/data_f4key/data10/";
-	//string path1 = "../data_20190513/data_f3key/data9/";
-	string path1 = "../data_20210223/8219/";
-	string path2;
+	string path1, path2;
+	//path1 = "../data_20190523/data/";
+	//path1 = "../data_20190514/data_f4key/data10/";
+	//path1 = "../data_20190513/data_f3key/data9/";
+	path1 = "../data_20210223/3236/";
 	const char *path;
 	// 读取地图参数
 	path2 = path1 + "mapParam.txt";
@@ -64,13 +64,13 @@ int main() {
 
 	// 创建概率地图
 	mylsd::LSD lsd = mylsd::LSD();
-	Mat mapCache = lsd.createMapCache(mapValue, mapParam.mapResol);
+	Mat mapCache = lsd.CreateMapCache(mapValue, mapParam.mapResol);
 	imshow("mapCache", mapCache);
 	//waitKey(0);
 
 	// LineSegmentDetector提取直线信息
 	double last_time = clock();
-	mylsd::LSD::structLSD LSD = lsd.myLineSegmentDetector(mapValue, oriMapCol, oriMapRow, lsd_sca, lsd_sig, lsd_angThre, lsd_denThre, pseBin);
+	mylsd::LSD::structLSD LSD = lsd.myLineSegmentDetector(mapValue, oriMapCol, oriMapRow, lsd_sca, lsd_sig, lsd_angThre, lsd_denThre, lsd_pseBin);
 	std::printf("%lf\n", (clock() - last_time) / CLOCKS_PER_SEC);
 	Mat Display = mapValue.clone();
 	resize(Display, Display, Size(0, 0), 0.5, 0.5);
@@ -114,7 +114,7 @@ int main() {
 	while (!feof(fp)) {
 		len_lp = 0;
 		bool is_EOF = false;
-		std::printf("��%d֡:\n", ++cnt_frame);
+		std::printf("第%d帧\n", ++cnt_frame);
 		// 每帧360度数据
 		for (i = 0; i < pointPerLoop; i++) {
 			double val1, val2;

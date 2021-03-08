@@ -52,11 +52,10 @@ namespace mylsd {
 
 		structLSD myLineSegmentDetector(Mat& MapGray, const int _oriMapCol, const int _oriMapRow, const float _sca, const float _sig,
 			const float _angThre, const float _denThre, const int _pseBin);
-		Mat createMapCache(const Mat& MapGray, const float res);
+		Mat CreateMapCache(const Mat& MapGray, const float res);
 
 	private:
 		typedef struct _nodeBinCell {
-			int value;
 			int x;
 			int y;
 		} nodeBinCell;
@@ -125,26 +124,25 @@ namespace mylsd {
 			float verX[4] = { 0 };
 			float verY[4] = { 0 };
 		} structRecVer;
-
-		typedef struct _compVector {
-			template <typename T>
-			bool operator() (const T& a, const T& b) {
-				return a.value > b.value;
-			}
-		} compVector;
 		
 		const float pi = 4.0 * atan(1.0), pi1_5 = 1.5 * pi, pi2 = 2 * pi;
-		int oriMapCol, oriMapRow, newMapCol, newMapRow;
+		int oriMapCol, oriMapRow, newMapCol, newMapRow, hSize;
 		float sca, sig, pseBin, logNT, aliPro;
 		float angThre, denThre, gradThre, regThre;
-		float coefA = 0.1066 * logNT + 2.6750;
-		float coefB = 0.004120 * logNT - 0.6223;
-		float coefC = -0.002607 * logNT + 0.1550;
+		const float coefA = 0.1066 * logNT + 2.6750;
+		const float coefB = 0.004120 * logNT - 0.6223;
+		const float coefC = -0.002607 * logNT + 0.1550;
 		vector<unordered_map<int, int>> usedMap2, curMap2;
 		vector<unordered_map<int, float>> degMap2, magMap2;
 
+#ifdef drawPicture
+		Mat lineIm, lineImColor;
+#endif
+
 		float FetchDegMapValue(const int y, const int x);
 		float FetchMagMapValue(const int y, const int x);
+		void GenerateLinesInfo(vector<structLinesInfo>& linesInfo, const int x1, const int y1, const int x2, const int y2);
+		vector<float> GenerateGaussianKernel(unordered_map<float, vector<float>>& kernelCache, const float kerMean);
 		Mat GaussianSampler(const Mat& image);
 		structRegionGrower RegionGrower(const int x, const int y, float regDeg, const float degThre);
 		structRec RectangleConverter(const structReg& reg, const float degThre);
