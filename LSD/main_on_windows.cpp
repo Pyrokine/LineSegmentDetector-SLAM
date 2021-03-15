@@ -1,4 +1,4 @@
-#include <time.h>
+﻿#include <time.h>
 #include <stdio.h>
 #include <opencv.hpp>
 #include <fstream>
@@ -10,7 +10,7 @@
 using namespace cv;
 using namespace std;
 
-myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::LSD::structLSD LSD, Mat mapCache, structPosition lastPose,\
+myfa::structFAInput trans2FA(myrdp::RDP::structFeatureScan FS, mylsd::LSD::structLSD LSD, Mat mapCache, structPosition lastPose,\
 	Eigen::Matrix<double, 9, 1> kalman_x, Eigen::Matrix<double, 9, 9> kalman_P, structPosition ScanPose, Mat Display);
 
 int main() {
@@ -19,9 +19,9 @@ int main() {
 	// 本地数据路径
 	string path1, path2;
 	//path1 = "../data_20190523/data/";
-	//path1 = "../data_20190514/data_f4key/data10/";
+	path1 = "../data_20190514/data_f4key/data10/";
 	//path1 = "../data_20190513/data_f3key/data9/";
-	path1 = "../data_20210223/3236/";
+	//path1 = "../data_20210223/3236/";
 	const char *path;
 	// 读取地图参数
 	path2 = path1 + "mapParam.txt";
@@ -65,7 +65,7 @@ int main() {
 	// 创建概率地图
 	mylsd::LSD lsd = mylsd::LSD();
 	Mat mapCache = lsd.CreateMapCache(mapValue, mapParam.mapResol);
-	imshow("mapCache", mapCache);
+	//imshow("mapCache", mapCache);
 	//waitKey(0);
 
 	// LineSegmentDetector提取直线信息
@@ -109,31 +109,39 @@ int main() {
 	fp = fopen(path, "r");
 	int i = 0, len_lp = 0, cnt_frame = 0;
 	bool is_offset = false;
-	myrdp::structLidarPointPolar lidarPointPolar[360];
 	vector<double> angRotate;
+	
 	while (!feof(fp)) {
+		vector<myrdp::RDP::structLidarPoint> lidarPointPolar;
 		len_lp = 0;
 		bool is_EOF = false;
-		std::printf("第%d帧\n", ++cnt_frame);
+		printf("第%d帧\n", ++cnt_frame);
 		// 每帧360度数据
+		//Mat img = Mat::zeros(800, 800, CV_8UC1);
 		for (i = 0; i < pointPerLoop; i++) {
-			double val1, val2;
+			float val1, val2;
 			if (feof(fp)) {
 				is_EOF = true;
 				break;
 			}
-			fscanf_s(fp, "%lf%lf", &val1, &val2);
+			fscanf_s(fp, "%f%f", &val1, &val2);
 
 			if (val1 != INFINITY) {
-				lidarPointPolar[len_lp].range = val1;
-				lidarPointPolar[len_lp].angle = val2;
-				lidarPointPolar[len_lp].split = false;
+				myrdp::RDP::structLidarPoint tempPoint;
+				tempPoint.range = val1;
+				tempPoint.radian = val2;
+				lidarPointPolar.push_back(tempPoint);
 				len_lp++;
+				//img.ptr<uint8_t>(tempPoint.range * sin(tempPoint.radian) * 10 + 400)[(int)(tempPoint.range * cos(tempPoint.radian) * 10 + 400)] = 255;
 			}
 		}
+		//imshow("img", img);
+		//cv::waitKey(0);
+
 		if (is_EOF == false) {
 			// 提取激光点云直线信息
-			myrdp::structFeatureScan FS = FeatureScan(mapParam, lidarPointPolar, len_lp, rdp_leastPoint, rdp_threLine, rdp_leastDist);
+			myrdp::RDP rdp = myrdp::RDP();
+			myrdp::RDP::structFeatureScan FS = rdp.FeatureScan(mapParam, lidarPointPolar, len_lp, rdp_leastPoint, rdp_threLine, rdp_leastDist);
 			//imshow("RDP", FS.lineIm);
 			
 			//Mat poseAll;
@@ -203,14 +211,14 @@ int main() {
 	return 0;
 }
 
-myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::LSD::structLSD LSD, Mat mapCache, structPosition lastPose,\
+myfa::structFAInput trans2FA(myrdp::RDP::structFeatureScan FS, mylsd::LSD::structLSD LSD, Mat mapCache, structPosition lastPose,\
 	Eigen::Matrix<double, 9, 1> kalman_x, Eigen::Matrix<double, 9, 9> kalman_P, structPosition ScanPose, Mat Display) {
 	// 数据格式转换
 	myfa::structFAInput FA;
 	int i;
 	// scanLinesInfo
-	FA.scanLinesInfo.resize(FS.len_linesInfo);
-	for (i = 0; i < FS.len_linesInfo; i++) {
+	FA.scanLinesInfo.resize(FS.linesInfo.size());
+	for (i = 0; i < FS.linesInfo.size(); i++) {
 		FA.scanLinesInfo[i].k = FS.linesInfo[i].k;
 		FA.scanLinesInfo[i].b = FS.linesInfo[i].b;
 		FA.scanLinesInfo[i].dx = FS.linesInfo[i].dx;
@@ -235,8 +243,8 @@ myfa::structFAInput trans2FA(myrdp::structFeatureScan FS, mylsd::LSD::structLSD 
 		FA.mapLinesInfo[i].len = LSD.linesInfo[i].len;
 	}
 	// lidarPos
-	FA.lidarPose.x = (int)round(FS.lidarPos.x);
-	FA.lidarPose.y = (int)round(FS.lidarPos.y);
+	FA.lidarPose.x = (int)round(FS.lidarPos.globalX);
+	FA.lidarPose.y = (int)round(FS.lidarPos.globalY);
 	//printf("x:%lf y:%lf\n", FS.lidarPos.x, FS.lidarPos.y);
 	FA.scanImPoint = FS.scanImPoint;
 	FA.mapCache = mapCache;

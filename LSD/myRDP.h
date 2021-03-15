@@ -1,17 +1,19 @@
-/////////////////////////////////////////////////////////////////////////
-//@Copyright(C) Pyrokine
-//All rights reserved
-//²©¿Í http://www.cnblogs.com/Pyrokine/
-//Github https://github.com/Pyrokine
-//´´½¨ÈÕÆÚ 20190227
-//°æ±¾ 1.1
+ï»¿/////////////////////////////////////////////////////////////////////////
+// @Copyright(C) Pyrokine
+// All rights reserved
+// åšå®¢ http://www.cnblogs.com/Pyrokine/
+// Github https://github.com/Pyrokine
+// åˆ›å»ºæ—¥æœŸ 20190227
+// ç‰ˆæœ¬ 1.2
 //**********************************************************************
-//V1.0
-//ÊµÏÖÁËRamerDouglasPeuckerµÄ»ù±¾Ëã·¨
+// V1.0
+// å®ç°äº†RamerDouglasPeuckerçš„åŸºæœ¬ç®—æ³•
 //
-//V1.1
-//Ôö¼Ó×¢ÊÍÁ¿£¬½«Ëã·¨ÌáÈ¡µ½µ¥¶ÀÎÄ¼ş²¢¿ÉÒÔ¶ÀÁ¢µ÷ÓÃ£¬Ôö¼ÓÃüÃû¿Õ¼ämyrdp
+// V1.1
+// å¢åŠ æ³¨é‡Šé‡ï¼Œå°†ç®—æ³•æå–åˆ°å•ç‹¬æ–‡ä»¶å¹¶å¯ä»¥ç‹¬ç«‹è°ƒç”¨ï¼Œå¢åŠ å‘½åç©ºé—´myrdp
 //
+// V1.2
+// ä»£ç é‡æ„
 /////////////////////////////////////////////////////////////////////////
 
 #ifndef _MYRDP_
@@ -28,43 +30,48 @@ using namespace std;
 using namespace cv;
 
 namespace myrdp {
-	typedef struct _structLidarPointPolar {
-		double range;
-		double angle;
-		bool split;
-	} structLidarPointPolar;
+	class RDP {
+	public:
+		typedef struct _structLidarPointPolar {
+			float radian = 0.0f;
+			int angle = 0;
+			float range = 0.0f;
+			float originX = 0.0f;
+			float originY = 0.0f;
+			float globalX = 0.0f;
+			float globalY = 0.0f;
+			int intensity = 0;
+			bool split = false;
+			int sn;
+		} structLidarPoint;
 
-	typedef struct _structLidarPointRec {
-		double x;
-		double y;
-		int num;
-	} structLidarPointRec;
+		typedef struct _structFeatureScan {
+			vector<structLinesInfo> linesInfo;
+			RDP::structLidarPoint lidarPos;
+			vector<structPosition> scanImPoint;
+			vector<vector<structLidarPoint>> pointGroup;
+		} structFeatureScan;
 
-	typedef struct _structPointCell {
-		structLidarPointRec startPointLoc;
-		structLidarPointRec endPointLoc;
-		int startPointNum;
-		int endPointNum;
-	} structPointCell;
+		structFeatureScan FeatureScan(structMapParam& mapParam, vector<structLidarPoint>& lidarPoint, const int lenLidarPoint, const int regionPointLimitNumber, const float threLine, const double line_len_threshold_m);
 
-	typedef struct _structRegionSegmentation {
-		structPointCell *pointCell;
-		int cellNum;
-	} structRegionSegmentation;
+	private:
+		int lenLidarPoint, regionPointLimitNumber;
+		float threLine;
+		vector<structLidarPoint> lidarPoint;
+		vector<double> scanPose = { 0, 0, 0 };
 
-	typedef struct _structFeatureScan {
-		Mat lineIm;
-		structLinesInfo *linesInfo;
-		structLidarPointRec lidarPos;
-		int len_linesInfo;
-		vector<structPosition> scanImPoint;
-	} structFeatureScan;
+		typedef struct _structPointCell {
+			structLidarPoint startPoint;
+			structLidarPoint endPoint;
+			int startPointNumber = 0;
+			int endPointNumber = 0;
+		} structPointCell;
 
-	structFeatureScan FeatureScan(structMapParam mapParam, structLidarPointPolar *lidarPointPolar, int len_lp, int RegionPointLimitNumber, double Threshold_line, double line_len_threshold_m);
-	structRegionSegmentation RegionSegmentation(structLidarPointPolar *lidarPoint, int len_lp, double *scanPose, int RegionPointLimitNumber);
-	void SplitMerge(structLidarPointPolar *lidarPointPolar, int len_lp, double *scanPose, structRegionSegmentation RS, double threLine);
-	void SplitMergeAssistant(structLidarPointPolar *lidarPointPolar, structLidarPointRec *lidarPointRec, int len_lp, int startPoint, int endPoint, double threLine);
-	double getThresholdDeltaDist(double val);
+		vector<structPointCell> RegionSegmentation();
+		void SplitMerge(vector<structPointCell>& pointCell);
+		void SplitMergeAssistant(const int startPointNumber, const int endPointNumber);
+		float getThresholdDeltaDist(const float val);
+	};
 }
 
 #endif // !_MYRDP_

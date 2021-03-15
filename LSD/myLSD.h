@@ -1,30 +1,33 @@
-/////////////////////////////////////////////////////////////////////////
-//@Copyright(C) Pyrokine
-//All rights reserved
-//²©¿Í http://www.cnblogs.com/Pyrokine/
-//Github https://github.com/Pyrokine
-//´´½¨ÈÕÆÚ 20190126
-//°æ±¾ 2.1
+ï»¿/////////////////////////////////////////////////////////////////////////
+// @Copyright(C) Pyrokine
+// All rights reserved
+// åšå®¢ http://www.cnblogs.com/Pyrokine/
+// Github https://github.com/Pyrokine
+// åˆ›å»ºæ—¥æœŸ 20190126
+// ç‰ˆæœ¬ 2.2
 //**********************************************************************
-//V1.0
-//ÊµÏÖÁËLineSegmentDetectorµÄ»ù±¾Ëã·¨£¬ ²¢Ìí¼ÓÁË»ù´¡µÄ¿ÉÊÓ»¯ÑÝÊ¾
+// V1.0
+// å®žçŽ°äº†LineSegmentDetectorçš„åŸºæœ¬ç®—æ³•ï¼Œ å¹¶æ·»åŠ äº†åŸºç¡€çš„å¯è§†åŒ–æ¼”ç¤º
 //
-//V1.1
-//Íê³ÉÁËËã·¨ÓÅ»¯£¬½«¶¨³¤Êý×éÓÃ¶¯Ì¬Êý×éÊµÏÖ£¬½«Î±ÅÅÐòÓÃ¿ìËÙÅÅÐòÊµÏÖ£¬
-//ÓÅ»¯ÁË¸ßË¹½µ²ÉÑùÖÐ¼ÆËã¸ßË¹ºËµÄËã·¨£¬¸Ä½øºóÖ»Ðè¼ÆËãÒ»´Î¸ßË¹ºË,µ«Ö»ÊÊÓÃÓÚ
-//0.3Ëõ·Å±ÈµÄµØÍ¼£¨ÆäËû±ÈÀýÐèÒªÖØÐÂ¼ÆËãÆ«ÒÆÖµ£©£¬½«ÇøÓòÔö³¤´ÎÊý´Ó¶à´Î¼õÉÙ
-//µ½1´Î
+// V1.1
+// å®Œæˆäº†ç®—æ³•ä¼˜åŒ–ï¼Œå°†å®šé•¿æ•°ç»„ç”¨åŠ¨æ€æ•°ç»„å®žçŽ°ï¼Œå°†ä¼ªæŽ’åºç”¨å¿«é€ŸæŽ’åºå®žçŽ°ï¼Œ
+// ä¼˜åŒ–äº†é«˜æ–¯é™é‡‡æ ·ä¸­è®¡ç®—é«˜æ–¯æ ¸çš„ç®—æ³•ï¼Œæ”¹è¿›åŽåªéœ€è®¡ç®—ä¸€æ¬¡é«˜æ–¯æ ¸,ä½†åªé€‚ç”¨äºŽ
+// 0.3ç¼©æ”¾æ¯”çš„åœ°å›¾ï¼ˆå…¶ä»–æ¯”ä¾‹éœ€è¦é‡æ–°è®¡ç®—åç§»å€¼ï¼‰ï¼Œå°†åŒºåŸŸå¢žé•¿æ¬¡æ•°ä»Žå¤šæ¬¡å‡å°‘
+// åˆ°1æ¬¡
 //
-//V1.2
-//Íê³ÉÁËDegree¶¯»­£¬²¢·ÖÀë³ömain_with_disp.cpp£¬ÐÞÕýÁËUsedMap¶¯»­£¬Ôö¼ÓÁË
-//ÌÝ¶ÈÅÅÃûºÍÇøÓòÄÚÏñËØµãÏÔÊ¾£¬Ôö¼ÓÁËÐé¾¯ÊýµÄ¸üÐÂÊý¾ÝÏÔÊ¾£¬ÌáÈ¡³öLSDËã·¨Îª
-//µ¥¶Àº¯Êý
+// V1.2
+// å®Œæˆäº†DegreeåŠ¨ç”»ï¼Œå¹¶åˆ†ç¦»å‡ºmain_with_disp.cppï¼Œä¿®æ­£äº†UsedMapåŠ¨ç”»ï¼Œå¢žåŠ äº†
+// æ¢¯åº¦æŽ’åå’ŒåŒºåŸŸå†…åƒç´ ç‚¹æ˜¾ç¤ºï¼Œå¢žåŠ äº†è™šè­¦æ•°çš„æ›´æ–°æ•°æ®æ˜¾ç¤ºï¼Œæå–å‡ºLSDç®—æ³•ä¸º
+// å•ç‹¬å‡½æ•°
 //
-//V2.0
-//ÌáÈ¡³öLSDËã·¨µ½µ¥¶ÀÎÄ¼þ£¬¿ÉÒÔµ¥¶ÀÒýÓÃ£¬Ôö¼ÓÃüÃû¿Õ¼ämylsd
+// V2.0
+// æå–å‡ºLSDç®—æ³•åˆ°å•ç‹¬æ–‡ä»¶ï¼Œå¯ä»¥å•ç‹¬å¼•ç”¨ï¼Œå¢žåŠ å‘½åç©ºé—´mylsd
 //
-//V2.1
-//¼ÆËã³öFeatureAssociationÐèÒªµÄmapCache£¬ÓÃÓÚ±íÊ¾ÏÈÑé¸ÅÂÊ
+// V2.1
+// è®¡ç®—å‡ºFeatureAssociationéœ€è¦çš„mapCacheï¼Œç”¨äºŽè¡¨ç¤ºå…ˆéªŒæ¦‚çŽ‡
+// 
+// V2.2
+// ä»£ç é‡æž„
 /////////////////////////////////////////////////////////////////////////
 
 #ifndef _MYLSD_

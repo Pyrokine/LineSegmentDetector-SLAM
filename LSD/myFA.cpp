@@ -1,34 +1,34 @@
-#include <myFA.h>
+ï»¿#include <myFA.h>
 
 using namespace cv;
 using namespace std;
 
 namespace myfa {
-	//¶àÏß³ÌµÄÈÎÎñ×ÜÊıºÍÍê³ÉÊıÁ¿
+	//å¤šçº¿ç¨‹çš„ä»»åŠ¡æ€»æ•°å’Œå®Œæˆæ•°é‡
 	int num_tasks = 0;
 	int num_done = 0;
-	//pthreadµÄ»¥³âËø
+	//pthreadçš„äº’æ–¥é”
 	pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 	structFAOutput FeatureAssociation(structFAInput *FAInput) {
-		//ÊäÈë£ºLSDºÍRDPËã·¨µÃµ½µÄÏß¶ÎÊı¾İÒÔ¼°¾àÀëµØÍ¼
-		//Êä³ö£º¶¨Î»½á¹û
+		//è¾“å…¥ï¼šLSDå’ŒRDPç®—æ³•å¾—åˆ°çš„çº¿æ®µæ•°æ®ä»¥åŠè·ç¦»åœ°å›¾
+		//è¾“å‡ºï¼šå®šä½ç»“æœ
 		int sizeScanLine = (int)FAInput->scanLinesInfo.size();
 		int sizeMapLine = (int)FAInput->mapLinesInfo.size();
-		//³õÊ¼»¯ÈÎÎñÊıÁ¿
+		//åˆå§‹åŒ–ä»»åŠ¡æ•°é‡
 		num_tasks = 0;
 		num_done = 0;
-		//³õÊ¼»¯Ïß³Ì³Ø
+		//åˆå§‹åŒ–çº¿ç¨‹æ± 
 		threadpool_t *pool = threadpool_create(numTHREAD, lenQUEUE, 0);
-		//³õÊ¼»¯Score
+		//åˆå§‹åŒ–Score
 		vector<structScore> Score;
 		structFAOutput FAOutput;
 
 		int cntScanLine = 0;
-		//ÒÔRDPÏß¶Î×÷Îª»ù×¼½øĞĞÆ¥Åä
+		//ä»¥RDPçº¿æ®µä½œä¸ºåŸºå‡†è¿›è¡ŒåŒ¹é…
 		for (cntScanLine = 0; cntScanLine < sizeScanLine; cntScanLine++) {
 			double lenScanLine = FAInput->scanLinesInfo[cntScanLine].len;
-			//ºöÂÔ¹ı¶ÌµÄÏß¶Î
+			//å¿½ç•¥è¿‡çŸ­çš„çº¿æ®µ
 			if (lenScanLine < ignoreScanLength)
 				continue;
 
@@ -36,36 +36,36 @@ namespace myfa {
 			int cntMapLine = 0;
 			for (cntMapLine = 0; cntMapLine < sizeMapLine; cntMapLine++) {
 				double lenMapLine = FAInput->mapLinesInfo[cntMapLine].len;
-				//¶Ô³¤¶È²îÔÚÒ»¶¨·¶Î§ÄÚµÄÏß¶Î½øĞĞÆ¥Åä
+				//å¯¹é•¿åº¦å·®åœ¨ä¸€å®šèŒƒå›´å†…çš„çº¿æ®µè¿›è¡ŒåŒ¹é…
 				if (lenMapLine < lenScanLine - lenDiff || lenMapLine > lenScanLine + lenDiff)
 					continue;
 
-				//¶àÏß³Ì²¢ĞĞÔËËã
-				//µÈ´ı¶ÓÎé¿Õ³ö
+				//å¤šçº¿ç¨‹å¹¶è¡Œè¿ç®—
+				//ç­‰å¾…é˜Ÿä¼ç©ºå‡º
 				while (num_tasks - num_done > lenQUEUE);
-				//´«²Î
+				//ä¼ å‚
 				structThreadSTMM *argSTMM = (structThreadSTMM*)malloc(sizeof(structThreadSTMM));
 				argSTMM->cntMapLine = cntMapLine;
 				argSTMM->cntScanLine = cntScanLine;
 				argSTMM->FAInput = FAInput;
 				argSTMM->Score = &Score;
 				argSTMM->lastPose = FAInput->lastPose;
-				//Ìí¼ÓÈÎÎñ
+				//æ·»åŠ ä»»åŠ¡
 				threadpool_add(pool, &thread_ScanToMapMatch, argSTMM, 0);
 				pthread_mutex_lock(&mutex);
 				num_tasks++;
 				pthread_mutex_unlock(&mutex);
 			}
 		}
-		//µÈ´ıËùÓĞÈÎÎñ½áÊø²¢Ïú»ÙÏß³Ì£¨ÒÑÖªBUG£º¿ÉÄÜÓĞÒ»¸öÈÎÎñ²»Õı³£½áÊø£©
-		//¿ÉÒÔÔö¼ÓµÈ´ıÊ±¼äÒÔ½áÊøµÈ´ı
+		//ç­‰å¾…æ‰€æœ‰ä»»åŠ¡ç»“æŸå¹¶é”€æ¯çº¿ç¨‹ï¼ˆå·²çŸ¥BUGï¼šå¯èƒ½æœ‰ä¸€ä¸ªä»»åŠ¡ä¸æ­£å¸¸ç»“æŸï¼‰
+		//å¯ä»¥å¢åŠ ç­‰å¾…æ—¶é—´ä»¥ç»“æŸç­‰å¾…
 		while (num_tasks - num_done > 1);
 		threadpool_destroy(pool, 0);
 
 		int lenScore = 0;
 		structScore *poseAll;
 		structScore poseEstimate;
-		//ÅĞ¶ÏÊÇ·ñÓĞÆ¥Åä½á¹û£¬²»´æÔÚÔò´´½¨ĞÂµÄÒşÂí¶û¿Æ·òÁ´
+		//åˆ¤æ–­æ˜¯å¦æœ‰åŒ¹é…ç»“æœï¼Œä¸å­˜åœ¨åˆ™åˆ›å»ºæ–°çš„éšé©¬å°”ç§‘å¤«é“¾
 		if (Score.empty()) {
 			poseEstimate.pos.x = -1;
 			poseEstimate.pos.y = -1;
@@ -92,10 +92,10 @@ namespace myfa {
 			poseAll = new structScore[lenScore * sizeof(structScore)];
 			memcpy(poseAll, &Score[0], lenScore * sizeof(structScore));
 		}
-		//È·¶¨Scorre×îµÍµÄ½á¹ûÎªµÚÒ»´ÎÆ¥ÅäµÄ»ù×¼µã
+		//ç¡®å®šScorreæœ€ä½çš„ç»“æœä¸ºç¬¬ä¸€æ¬¡åŒ¹é…çš„åŸºå‡†ç‚¹
 		qsort(poseAll, lenScore, sizeof(structScore), CompScore);
 
-		//´¦ÀíÒşÂí¶û¿Æ·òÁ´µÚÒ»Ö¡
+		//å¤„ç†éšé©¬å°”ç§‘å¤«é“¾ç¬¬ä¸€å¸§
 		if (abs(FAInput->lastPose.x + 1) < 0.0001) {
 			poseEstimate = poseAll[0];
 			FAOutput.kalman_x = FAInput->kalman_x;
@@ -107,7 +107,7 @@ namespace myfa {
 			return FAOutput;
 		}
 
-		//ÒşÂí¶û¿Æ·òÁ´ÖĞ¼äÖ¡
+		//éšé©¬å°”ç§‘å¤«é“¾ä¸­é—´å¸§
 		double scaThre = 0;
 		int cntPoseAll = 0, lenPoseAll = 0;
 
@@ -125,7 +125,7 @@ namespace myfa {
 		//}
 		//vector<structScore> poseSimilar;
 
-		//ÎŞÆ¥Åä½á¹û£¬Éú³ÉĞÂµÄÒşÂí¶û¿Æ·òÁ´
+		//æ— åŒ¹é…ç»“æœï¼Œç”Ÿæˆæ–°çš„éšé©¬å°”ç§‘å¤«é“¾
 		if (lenScore == 0) {
 			poseEstimate.pos.x = -1;
 			poseEstimate.pos.y = -1;
@@ -155,7 +155,7 @@ namespace myfa {
 		//imshow("Display", Display);
 		//waitKey(0);
 
-		//¶ÔÆ¥Åä½á¹û¼ÓÈ¨Çó¾ùÖµ
+		//å¯¹åŒ¹é…ç»“æœåŠ æƒæ±‚å‡å€¼
 		double sumX = 0, sumY = 0, sumAngle = 0, sumScore = 0;
 		int cnt;
 		for (cnt = 0; cnt < lenScore; cnt++) {
@@ -184,13 +184,13 @@ namespace myfa {
 	}
 
 	void thread_ScanToMapMatch(void *arg) {
-		//ÊäÈë£º´ıÆ¥ÅäµÄÁ½ÌõÏß¶ÎµÄĞòºÅ
-		//Êä³ö£ºËùÓĞÆ¥Åä½á¹ûµÄ¼¤¹âÀ×´ïÎ»ÖÃºÍµÃ·Ö
+		//è¾“å…¥ï¼šå¾…åŒ¹é…çš„ä¸¤æ¡çº¿æ®µçš„åºå·
+		//è¾“å‡ºï¼šæ‰€æœ‰åŒ¹é…ç»“æœçš„æ¿€å…‰é›·è¾¾ä½ç½®å’Œå¾—åˆ†
 		structThreadSTMM *argSTMM = (structThreadSTMM*) arg;
 
 		int lenScore = 0;
 		int i = 0;
-		//ËÄÖÖÆ¥Åä·½Ê½
+		//å››ç§åŒ¹é…æ–¹å¼
 		for (i = 1; i <= 4; i++) {
 			structStaEnd mapStaEndPoint, scanStaEndPoint;
 			if (i == 1) {
@@ -234,7 +234,7 @@ namespace myfa {
 				scanStaEndPoint.endY = argSTMM->FAInput->scanLinesInfo[argSTMM->cntScanLine].y1;
 			}
 
-			//Éú³ÉÆ¥Åä»ù×¼µãºÍ»ù×¼Ïß¶Î½Ç¶È
+			//ç”ŸæˆåŒ¹é…åŸºå‡†ç‚¹å’ŒåŸºå‡†çº¿æ®µè§’åº¦
 			structPosition mapPose, scanPose;
 			mapPose.x = mapStaEndPoint.staX;
 			mapPose.y = mapStaEndPoint.staY;
@@ -257,14 +257,14 @@ namespace myfa {
 				tempScore.score = INFINITY;
 			}
 
-			//Ğ´Èë½á¹û
+			//å†™å…¥ç»“æœ
 			if (tempScore.score < 3) {
 				pthread_mutex_lock(&mutex);
 				argSTMM->Score->push_back(tempScore);
 				pthread_mutex_unlock(&mutex);
 			}
 		}
-		//Ôö¼ÓÍê³ÉÊıÁ¿²¢ÊÍ·Å²ÎÊı
+		//å¢åŠ å®Œæˆæ•°é‡å¹¶é‡Šæ”¾å‚æ•°
 		pthread_mutex_lock(&mutex);
 		num_done++;
 		pthread_mutex_unlock(&mutex);
@@ -272,8 +272,8 @@ namespace myfa {
 	}
 
 	double NormalizedLineDirection(structStaEnd lineStaEnd) {
-		//¼ÆËãĞ±ÂÊ£¬ ¹éÒ»»¯Ïß¶Î·½Ïò, µã£¨x1, y1£© ÎªÆğÊ¼µã
-		//angleÎªÏß¶Î½Ç¶È, µ¥Î»Îªy¶È£¬´óĞ¡Îª[-180£¬180]
+		//è®¡ç®—æ–œç‡ï¼Œ å½’ä¸€åŒ–çº¿æ®µæ–¹å‘, ç‚¹ï¼ˆx1, y1ï¼‰ ä¸ºèµ·å§‹ç‚¹
+		//angleä¸ºçº¿æ®µè§’åº¦, å•ä½ä¸ºyåº¦ï¼Œå¤§å°ä¸º[-180ï¼Œ180]
 		double angle;
 		if (lineStaEnd.staX == lineStaEnd.endX && lineStaEnd.staY != lineStaEnd.endY) {
 			if (lineStaEnd.staY < lineStaEnd.endY)
@@ -305,37 +305,37 @@ namespace myfa {
 	}
 
 	structRotateScanIm rotateScanIm(structFAInput *FAInput, structPosition mapPose, structPosition scanPose, structPosition lastPose) {
-		//Ğı×ªRDPµãÔÆÒÔ¼ÆËãScore
-		//LSDÏß¶ÎºÍRDPÏß¶ÎµÄ½Ç¶È²î
+		//æ—‹è½¬RDPç‚¹äº‘ä»¥è®¡ç®—Score
+		//LSDçº¿æ®µå’ŒRDPçº¿æ®µçš„è§’åº¦å·®
 		double angDiff = mapPose.ang - scanPose.ang;
 		//printf("mapAng:%lf scanAng:%lf\n", mapPose.ang, scanPose.ang);
 
 		int numScanImPoint = (int)FAInput->scanImPoint.size();
 		int cnt;
-		//½«µãÔÆÔ­µãÆ½ÒÆµ½´ıÆ¥ÅäµÄRDPÏß¶ÎµÄ»ù×¼µã
+		//å°†ç‚¹äº‘åŸç‚¹å¹³ç§»åˆ°å¾…åŒ¹é…çš„RDPçº¿æ®µçš„åŸºå‡†ç‚¹
 		structPosition *oriScanImPoint = (structPosition*)malloc(numScanImPoint * sizeof(structPosition));
 		for (cnt = 0; cnt < numScanImPoint; cnt++) {
 			oriScanImPoint[cnt].x = FAInput->scanImPoint[cnt].x - scanPose.x;
 			oriScanImPoint[cnt].y = FAInput->scanImPoint[cnt].y - scanPose.y;
 		}
 
-		//½«¼¤¹âÀ×´ï×ø±ê×öÉÏÊöÏàÍ¬±ä»»
+		//å°†æ¿€å…‰é›·è¾¾åæ ‡åšä¸Šè¿°ç›¸åŒå˜æ¢
 		structPosition rotateLidarPose;
 		rotateLidarPose.x = (FAInput->lidarPose.x - scanPose.x) * cosd(angDiff) - (FAInput->lidarPose.y - scanPose.y) * sind(angDiff) + mapPose.x;
 		rotateLidarPose.y = (FAInput->lidarPose.x - scanPose.x) * sind(angDiff) + (FAInput->lidarPose.y - scanPose.y) * cosd(angDiff) + mapPose.y;
 		rotateLidarPose.ang = 0;
 
 		structRotateScanIm RSI;
-		//È¡maxEstiDistÖĞµÄÏñËØ£¬ÈôÎªÒşÂí¶û¿Æ·òÁ´µÄµÚÒ»Ö¡£¬½øĞĞÏàÍ¬±éÀú
+		//å–maxEstiDistä¸­çš„åƒç´ ï¼Œè‹¥ä¸ºéšé©¬å°”ç§‘å¤«é“¾çš„ç¬¬ä¸€å¸§ï¼Œè¿›è¡Œç›¸åŒéå†
 		if (sqrt(pow(rotateLidarPose.x - lastPose.x, 2) + pow(rotateLidarPose.y - lastPose.y, 2)) < maxEstiDist || lastPose.x == -1) {
-			//°´½Ç¶È²îĞı×ªÍ¼Ïñºó½«Ô­µãÆ½ÒÆµ½LSDÏß¶Î»ù×¼µã
+			//æŒ‰è§’åº¦å·®æ—‹è½¬å›¾åƒåå°†åŸç‚¹å¹³ç§»åˆ°LSDçº¿æ®µåŸºå‡†ç‚¹
 			structPosition *rotateScanImPoint = (structPosition*)malloc(numScanImPoint * sizeof(structPosition));
 			for (cnt = 0; cnt < numScanImPoint; cnt++) {
 				rotateScanImPoint[cnt].x = oriScanImPoint[cnt].x * cosd(angDiff) - oriScanImPoint[cnt].y * sind(angDiff) + mapPose.x;
 				rotateScanImPoint[cnt].y = oriScanImPoint[cnt].x * sind(angDiff) + oriScanImPoint[cnt].y * cosd(angDiff) + mapPose.y;
 			}
 
-			//½«½Ç¶È²î¿ØÖÆÔÚ[-180,180]
+			//å°†è§’åº¦å·®æ§åˆ¶åœ¨[-180,180]
 			while (angDiff <= -180)
 				angDiff += 360;
 			while (angDiff > 180)
@@ -355,11 +355,11 @@ namespace myfa {
 	}
 
 	double CalcScore(structFAInput *FAInput, structRotateScanIm RSI) {
-		//ÊäÈë£ºĞı×ªºóµÄRDPµãÔÆºÍ¾àÀëÍ¼mapCache
-		//Êä³ö£º¾àÀëÆÀ·ÖScore£¬Ô½Ğ¡Ô½ºÃ
-		//sumDistÎª¾àÀëºÍ£¬ValidÎªÔÚmapCacheÖĞĞ¡ÓÚ²ÎÊız_occ_max_disµÄÏñËØ
+		//è¾“å…¥ï¼šæ—‹è½¬åçš„RDPç‚¹äº‘å’Œè·ç¦»å›¾mapCache
+		//è¾“å‡ºï¼šè·ç¦»è¯„åˆ†Scoreï¼Œè¶Šå°è¶Šå¥½
+		//sumDistä¸ºè·ç¦»å’Œï¼ŒValidä¸ºåœ¨mapCacheä¸­å°äºå‚æ•°z_occ_max_disçš„åƒç´ 
 		double sumValidDist = 0, sumMaxDist = 0, numValidDistPoint = 0, numMaxDistPoint = 0;
-		//AllÎªËùÓĞÏñËØ£¬ValidÎªÔÚµØÍ¼ÄÚµÄÏñËØ
+		//Allä¸ºæ‰€æœ‰åƒç´ ï¼ŒValidä¸ºåœ¨åœ°å›¾å†…çš„åƒç´ 
 		double numAllPoint = 0, numValidPoint = 0;
 
 		int cnt;
@@ -372,7 +372,7 @@ namespace myfa {
 				numValidPoint += 1;
 				if (FAInput->mapCache.ptr<float>(y)[x] >= z_occ_max_dis)
 				{
-					//Ìá¸ßÈ¨ÖØ£¬³Í·£MaxÏñËØ
+					//æé«˜æƒé‡ï¼Œæƒ©ç½šMaxåƒç´ 
 					sumMaxDist += 10;
 					numMaxDistPoint += 1;
 				}
@@ -397,7 +397,7 @@ namespace myfa {
 
 	int CompScore(const void *p1, const void *p2)
 	{
-		//´ÓĞ¡µ½´óÅÅĞò
+		//ä»å°åˆ°å¤§æ’åº
 		return(*(structScore*)p2).score < (*(structScore*)p1).score ? 1 : -1;
 	}
 
@@ -412,11 +412,11 @@ namespace myfa {
 					0, 0, 0, 0, 0, 0.01, 0, 0, 0,
 					0, 0, 0, 0, 0, 0, 0.0001, 0, 0,
 					0, 0, 0, 0, 0, 0, 0, 0.0001, 0,
-					0, 0, 0, 0, 0, 0, 0, 0, 0.0001;// ¹ı³ÌÔëÉùĞ­·½²î¾ØÕó
+					0, 0, 0, 0, 0, 0, 0, 0, 0.0001;// è¿‡ç¨‹å™ªå£°åæ–¹å·®çŸ©é˜µ
 		kalman_R << 1, 0, 0,
 					0, 1, 0,
-					0, 0, 1;// ²âÁ¿ÔëÉùĞ­·½²î¾ØÕó
-		double kalman_t = 1; //²ÉÓÃµãÊı
+					0, 0, 1;// æµ‹é‡å™ªå£°åæ–¹å·®çŸ©é˜µ
+		double kalman_t = 1; //é‡‡ç”¨ç‚¹æ•°
 		
 		Eigen::Matrix<double, 9, 1> kalman_x;
 		Eigen::Matrix<double, 9, 9> kalman_P;
@@ -426,11 +426,11 @@ namespace myfa {
 		kalman_x(1) += FAInput->ScanPose.y;
 		kalman_x(2) += FAInput->ScanPose.ang;
 
-		int L = 9; //kalman_xµÄÎ¬¶È
-		int m = 3; //poseEstimate.posµÄÎ¬¶È
-		double alpha = 1e-2; //Ä¬ÈÏÏµÊı
-		double ki = 0; //Ä¬ÈÏÏµÊı
-		double beta = 2; //Ä¬ÈÏÏµÊı
+		int L = 9; //kalman_xçš„ç»´åº¦
+		int m = 3; //poseEstimate.posçš„ç»´åº¦
+		double alpha = 1e-2; //é»˜è®¤ç³»æ•°
+		double ki = 0; //é»˜è®¤ç³»æ•°
+		double beta = 2; //é»˜è®¤ç³»æ•°
 		double lambda = alpha * alpha * (L + ki) - L;
 		double c = L + lambda;
 		Eigen::Matrix<double, 1, 19> Wm;
@@ -445,8 +445,8 @@ namespace myfa {
 		Wc(0) += 1 - alpha * alpha + beta;
 		c = sqrt(c);
 
-		// µÚÒ»²½£¬»ñÈ¡Ò»×ésigmaµã¼¯
-		// sigmaµã¼¯£¬ÔÚ×´Ì¬X¸½½üµÄµã¼¯£¬XÊÇ6 * 13¾ØÕó£¬Ã¿ÁĞÎª1Ñù±¾
+		// ç¬¬ä¸€æ­¥ï¼Œè·å–ä¸€ç»„sigmaç‚¹é›†
+		// sigmaç‚¹é›†ï¼Œåœ¨çŠ¶æ€Xé™„è¿‘çš„ç‚¹é›†ï¼ŒXæ˜¯6 * 13çŸ©é˜µï¼Œæ¯åˆ—ä¸º1æ ·æœ¬
 		Eigen::Matrix<double, 9, 9> A;
 		Eigen::Matrix<double, 9, 9> A2;
 		Eigen::Matrix<double, 9, 9> Y;
@@ -458,8 +458,8 @@ namespace myfa {
 		Y << kalman_x, kalman_x, kalman_x, kalman_x, kalman_x,\
 			kalman_x, kalman_x, kalman_x, kalman_x;
 		Xset << kalman_x, Y + A, Y - A;
-		// µÚ¶ş¡¢µÚÈı¡¢ËÄ²½£¬¶Ôsigmaµã¼¯½øĞĞÒ»²½Ô¤²â£¬µÃµ½¾ùÖµXImeansºÍ·½²îP1ºÍĞÂsigmaµã¼¯X1
-		// ¶Ô×´Ì¬UT±ä»»
+		// ç¬¬äºŒã€ç¬¬ä¸‰ã€å››æ­¥ï¼Œå¯¹sigmaç‚¹é›†è¿›è¡Œä¸€æ­¥é¢„æµ‹ï¼Œå¾—åˆ°å‡å€¼XImeanså’Œæ–¹å·®P1å’Œæ–°sigmaç‚¹é›†X1
+		// å¯¹çŠ¶æ€UTå˜æ¢
 		int LL = 2 * L + 1; //19
 		Eigen::Matrix<double, 9, 1> Xmeans = Eigen::Matrix<double, 9, 1>::Zero();
 		Eigen::Matrix<double, 9, 19> Xsigma_pre;
@@ -494,8 +494,8 @@ namespace myfa {
 		Eigen::Matrix<double, 9, 9> P1;
 		P1 = Xdiv * Wc.asDiagonal() * Xdiv.transpose() + kalman_Q;
 
-		// µÚÎå¡¢Áù²½£¬µÃµ½¹Û²âÔ¤²â£¬Z1ÎªX1¼¯ºÏµÄÔ¤²â£¬ZpreÎªZ1µÄ¾ùÖµ¡£
-		// PzzÎªĞ­·½²î
+		// ç¬¬äº”ã€å…­æ­¥ï¼Œå¾—åˆ°è§‚æµ‹é¢„æµ‹ï¼ŒZ1ä¸ºX1é›†åˆçš„é¢„æµ‹ï¼ŒZpreä¸ºZ1çš„å‡å€¼ã€‚
+		// Pzzä¸ºåæ–¹å·®
 		Eigen::Matrix<double, 3, 1> Zmeans = Eigen::Matrix<double, 3, 1>::Zero();
 		Eigen::Matrix<double, 3, 19> Zsigma_pre;
 		Eigen::Matrix<double, 3, 19> Zdiv;
@@ -517,7 +517,7 @@ namespace myfa {
 		Eigen::Matrix<double, 3, 3> Pzz;
 		Pzz = Zdiv * Wc.asDiagonal() * Zdiv.transpose() + kalman_R;
 
-		// µÚÆß²½£¬¼ÆËã¿¨¶ûÂüÔöÒæ
+		// ç¬¬ä¸ƒæ­¥ï¼Œè®¡ç®—å¡å°”æ›¼å¢ç›Š
 		Eigen::Matrix<double, 9, 3> Pxz;
 		Eigen::Matrix<double, 9, 3> K;
 		Pxz = Xdiv * Wc.asDiagonal() * Zdiv.transpose();

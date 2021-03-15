@@ -1,4 +1,4 @@
-#include <myLSD.h>
+ï»¿#include <myLSD.h>
 
 using namespace cv;
 using namespace std;
@@ -14,7 +14,7 @@ namespace mylsd {
 		sca = 200.0f / min(oriMapCol, oriMapRow);
 		newMapCol = floor(oriMapCol * sca);
 		newMapRow = floor(oriMapRow * sca);
-		// ¸ñÊ½»¯µØÍ¼
+		// æ ¼å¼åŒ–åœ°å›¾
 		for (int y = 0; y < oriMapRow; y++) {
 			for (int x = 0; x < oriMapCol; x++) {
 				if (MapGray.ptr<uint8_t>(y)[x] == 1)
@@ -29,11 +29,11 @@ namespace mylsd {
 		//waitKey(0);
 #endif
 
-		// Í¼ÏñËõ·Å¡ª¡ª¸ßË¹½µ²ÉÑù
+		// å›¾åƒç¼©æ”¾â€”â€”é«˜æ–¯é™é‡‡æ ·
 		//last_time = clock();
-		Mat GaussImage = GaussianSampler(MapGray); // Õâ¸ö·µ»ØµÄÊÇfloatĞÍ£¬Í¬Ê±¿ÉÒÔ×ÔÓÉÉè¶¨Ëõ·Å±ÈÀı
+		Mat GaussImage = GaussianSampler(MapGray); // è¿™ä¸ªè¿”å›çš„æ˜¯floatå‹ï¼ŒåŒæ—¶å¯ä»¥è‡ªç”±è®¾å®šç¼©æ”¾æ¯”ä¾‹
 		//Mat GaussImage;
-		//pyrDown(MapGray, GaussImage, Size(ceil(oriMapCol / 2.0), ceil(oriMapRow / 2.0))); // Í¼Ïñ½ğ×ÖËş£¬2µÄÃİ´Î±¶Ëõ·Å£¨Ó¦¸ÃÊÇ£©
+		//pyrDown(MapGray, GaussImage, Size(ceil(oriMapCol / 2.0), ceil(oriMapRow / 2.0))); // å›¾åƒé‡‘å­—å¡”ï¼Œ2çš„å¹‚æ¬¡å€ç¼©æ”¾ï¼ˆåº”è¯¥æ˜¯ï¼‰
 		//printf("01 %lf\n", (clock() - last_time) / CLOCKS_PER_SEC);
 
 #ifdef drawPicture
@@ -41,27 +41,27 @@ namespace mylsd {
 		//waitKey(0);
 #endif
 
-		// usedMapÖĞ0±íÊ¾´ıÉú³¤µÄÕ¤¸ñ£¬1±íÊ¾Ìİ¶È¹ıĞ¡²»Éú³¤µÄÕ¤¸ñ£¬2±íÊ¾Ğé¾¯µÄÕ¤¸ñ£¬¿ÉÉú³¤µ«²»ÄÜ×÷Îª³õÊ¼Éú³¤µã
-		// ÒòÎª¾ø´ó¶àÊıÎª1£¬Òò´ËÏ¡Êè¾ØÕó´¢´æ0ºÍ2
+		// usedMapä¸­0è¡¨ç¤ºå¾…ç”Ÿé•¿çš„æ …æ ¼ï¼Œ1è¡¨ç¤ºæ¢¯åº¦è¿‡å°ä¸ç”Ÿé•¿çš„æ …æ ¼ï¼Œ2è¡¨ç¤ºè™šè­¦çš„æ …æ ¼ï¼Œå¯ç”Ÿé•¿ä½†ä¸èƒ½ä½œä¸ºåˆå§‹ç”Ÿé•¿ç‚¹
+		// å› ä¸ºç»å¤§å¤šæ•°ä¸º1ï¼Œå› æ­¤ç¨€ç–çŸ©é˜µå‚¨å­˜0å’Œ2
 		for (int i = 0; i < newMapRow; i++) {
 			unordered_map<int, int> tempUsedMap;
 			unordered_map<int, float> tempDegMap;
 			usedMap2.push_back(tempUsedMap);
 			degMap2.push_back(tempDegMap);
 		}
-		curMap2 = usedMap2; // ¸ñÊ½Ò»Ñù£¬Ö±½ÓÉî¿½±´
+		curMap2 = usedMap2; // æ ¼å¼ä¸€æ ·ï¼Œç›´æ¥æ·±æ‹·è´
 		magMap2 = degMap2;
 
-		//Mat degMap = Mat::zeros(newMapRow, newMapCol, CV_32FC1);//level-line³¡·½Ïò
-		//Mat magMap = Mat::zeros(newMapRow, newMapCol, CV_32FC1);//¼ÇÂ¼Ã¿µãµÄÌİ¶È
-		const float degThre = angThre / 180.0f * pi; // ½Ç¶ÈãĞÖµ
-		gradThre = 2.0f / sin(degThre); // Ìİ¶ÈãĞÖµ
+		//Mat degMap = Mat::zeros(newMapRow, newMapCol, CV_32FC1);//level-lineåœºæ–¹å‘
+		//Mat magMap = Mat::zeros(newMapRow, newMapCol, CV_32FC1);//è®°å½•æ¯ç‚¹çš„æ¢¯åº¦
+		const float degThre = angThre / 180.0f * pi; // è§’åº¦é˜ˆå€¼
+		gradThre = 2.0f / sin(degThre); // æ¢¯åº¦é˜ˆå€¼
 
-		// ¼ÆËãÌİ¶ÈºÍlevel-line³¡·½Ïò²¢´¢´æÌİ¶Èµ½ÈİÆ÷
+		// è®¡ç®—æ¢¯åº¦å’Œlevel-lineåœºæ–¹å‘å¹¶å‚¨å­˜æ¢¯åº¦åˆ°å®¹å™¨
 		//last_time = clock();
 		vector<vector<nodeBinCell>> binCell(256);
 		float gradX, gradY, valueMagnitude, valueDegree, A, B, C, D;
-		// ×îÍâ²à1¸öÏñËØ±ê¼ÇÎªused£¬ÇøÓòÔö³¤Ê±¿ÉÒÔ¼õÉÙÅĞ¶ÏÊ±¼ä
+		// æœ€å¤–ä¾§1ä¸ªåƒç´ æ ‡è®°ä¸ºusedï¼ŒåŒºåŸŸå¢é•¿æ—¶å¯ä»¥å‡å°‘åˆ¤æ–­æ—¶é—´
 		for (int y = 1; y < newMapRow - 1; y++) {
 			for (int x = 1; x < newMapCol - 1; x++) {
 				// D C
@@ -89,7 +89,7 @@ namespace mylsd {
 				}
 				
 				if (abs(valueDegree) > 0.000001f) {
-					// ½öÔÚ0~piµÄ»¡¶ÈÖ®¼ä¿¼ÂÇ¾ØĞÎ½Ç¶È
+					// ä»…åœ¨0~piçš„å¼§åº¦ä¹‹é—´è€ƒè™‘çŸ©å½¢è§’åº¦
 					if (valueDegree > pi)
 						valueDegree -= pi;
 					degMap2[y][x] = valueDegree;
@@ -97,7 +97,7 @@ namespace mylsd {
 				
 				//degMap.ptr<float>(y)[x] = valueDegree;
 
-				// valueMagnitudeµÄÈ¡Öµ·¶Î§Îª0-255,Ö±½ÓÎ±ÅÅĞò
+				// valueMagnitudeçš„å–å€¼èŒƒå›´ä¸º0-255,ç›´æ¥ä¼ªæ’åº
 				nodeBinCell tempNode = {
 					x,
 					y 
@@ -118,22 +118,22 @@ namespace mylsd {
 
 		//printf("02 %lf\n", (clock() - last_time) / CLOCKS_PER_SEC);
 
-		logNT = 5.0f * (log10f(newMapRow) + log10f(newMapCol)) / 2.0f;// ²âÊÔÊıÁ¿µÄ¶ÔÊıÖµ
-		regThre = -logNT / log10f(angThre / 180.0f); // Ğ¡ÇøÓòµÄãĞÖµ
+		logNT = 5.0f * (log10f(newMapRow) + log10f(newMapCol)) / 2.0f;// æµ‹è¯•æ•°é‡çš„å¯¹æ•°å€¼
+		regThre = -logNT / log10f(angThre / 180.0f); // å°åŒºåŸŸçš„é˜ˆå€¼
 		aliPro = angThre / 180.0f;
 
 #ifdef drawPicture
-		lineIm = Mat::zeros(oriMapRow, oriMapCol, CV_8UC1);// ¼ÇÂ¼Ö±Ïß»Ò°×Í¼Ïñ
-		lineImColor = Mat::zeros(oriMapRow, oriMapCol, CV_8UC3);// ¼ÇÂ¼Ö±Ïß²ÊÉ«Í¼Ïñ
+		lineIm = Mat::zeros(oriMapRow, oriMapCol, CV_8UC1);// è®°å½•ç›´çº¿ç°ç™½å›¾åƒ
+		lineImColor = Mat::zeros(oriMapRow, oriMapCol, CV_8UC3);// è®°å½•ç›´çº¿å½©è‰²å›¾åƒ
 #endif 
 
 		//printf("1 %lf\n", (clock() - last_time2) / CLOCKS_PER_SEC);
 		//last_time2 = clock();
 
-		// ¼ÇÂ¼Ö±ÏßĞÅÏ¢
+		// è®°å½•ç›´çº¿ä¿¡æ¯
 		vector<structLinesInfo> linesInfo;
 
-		// °´ÕÕÅÅĞòË³Ğò£¬ÒÀ´ÎËÑË÷ÖÖ×ÓÏñËØ£¬´Ó×î´óÌİ¶È¿ªÊ¼Ôö³¤
+		// æŒ‰ç…§æ’åºé¡ºåºï¼Œä¾æ¬¡æœç´¢ç§å­åƒç´ ï¼Œä»æœ€å¤§æ¢¯åº¦å¼€å§‹å¢é•¿
 		double t1 = 0, t2 = 0, t3 = 0, t4 = 0, t5 = 0;
 		int regCnt = 0, yIdx, xIdx;
 		for (int i = 255; i >= 0; i--) {
@@ -143,22 +143,22 @@ namespace mylsd {
 				if (usedMap2[yIdx].find(xIdx) == usedMap2[yIdx].end() || usedMap2[yIdx][xIdx] == 2)
 					continue;
 
-				// ÇøÓòÔö³¤ ·µ»ØcurMapºÍreg
+				// åŒºåŸŸå¢é•¿ è¿”å›curMapå’Œreg
 				double last_time = clock();
 				structRegionGrower RG = RegionGrower(xIdx, yIdx, FetchDegMapValue(yIdx, xIdx), degThre);
 				t1 += clock() - last_time;
 
 				structReg reg = RG.reg;
-				// É¾³ıĞ¡ÇøÓò
+				// åˆ é™¤å°åŒºåŸŸ
 				if (reg.num < regThre)
 					continue;
 
-				// ¾ØÕó½üËÆ ·µ»Ørec
+				// çŸ©é˜µè¿‘ä¼¼ è¿”å›rec
 				last_time = clock();
 				structRec rec = RectangleConverter(reg, degThre);
 				t2 += clock() - last_time;
 
-				// ¸ù¾İÃÜ¶ÈãĞÖµ£¬µ÷ÕûÇøÓò ·µ»Øboolean, curMap, rec, reg
+				// æ ¹æ®å¯†åº¦é˜ˆå€¼ï¼Œè°ƒæ•´åŒºåŸŸ è¿”å›boolean, curMap, rec, reg
 				last_time = clock();
 				structRefiner RF = Refiner(reg, rec, RG.curMap);
 				t3 += clock() - last_time;
@@ -168,7 +168,7 @@ namespace mylsd {
 					continue;
 				}
 
-				// ¾ØĞÎµ÷Õû ·µ»ØlogNFA, rec
+				// çŸ©å½¢è°ƒæ•´ è¿”å›logNFA, rec
 				last_time = clock();
 				structRectangleImprover RI = RectangleImprover(rec);
 				rec = RI.rec;
@@ -185,7 +185,7 @@ namespace mylsd {
 				t4 += clock() - last_time;
 
 				last_time = clock();
-				// ¸ù¾İËõ·Å³ß¶ÈÖØĞÂµ÷ÕûÍ¼ÏñÖĞËùÕÒµ½µÄÖ±ÏßĞÅÏ¢
+				// æ ¹æ®ç¼©æ”¾å°ºåº¦é‡æ–°è°ƒæ•´å›¾åƒä¸­æ‰€æ‰¾åˆ°çš„ç›´çº¿ä¿¡æ¯
 				rec.x1 = (rec.x1 - 1.0f) / sca + 1.0f;
 				rec.y1 = (rec.y1 - 1.0f) / sca + 1.0f;
 				rec.x2 = (rec.x2 - 1.0f) / sca + 1.0f;
@@ -198,7 +198,7 @@ namespace mylsd {
 					}
 				}
 
-				// ½«ËùÌáÈ¡µ½µÄÖ±Ïß°´ÕÕÏñËØµã±ê¼ÇÔÚÍ¼Ïñ¾ØÕóÖĞ
+				// å°†æ‰€æå–åˆ°çš„ç›´çº¿æŒ‰ç…§åƒç´ ç‚¹æ ‡è®°åœ¨å›¾åƒçŸ©é˜µä¸­
 				GenerateLinesInfo(linesInfo, rec.x1, rec.y1, rec.x2, rec.y2);
 				regCnt++;
 				t5 += clock() - last_time;
@@ -234,7 +234,7 @@ namespace mylsd {
 	}
 
 	void LSD::GenerateLinesInfo(vector<structLinesInfo>& linesInfo, const int x1, const int y1, const int x2, const int y2) {
-		// ÇóÈ¡Ö±ÏßĞ±ÂÊ
+		// æ±‚å–ç›´çº¿æ–œç‡
 		const float k = (1.0 * y2 - y1) / (x2 - x1);
 		float ang = atand(k);
 		int orient = 1;
@@ -244,7 +244,7 @@ namespace mylsd {
 		}
 
 #ifdef drawPicture
-		// È·¶¨Ö±ÏßX×ø±êÖáºÍY×ø±êÖáµÄ¿ç¶È
+		// ç¡®å®šç›´çº¿Xåæ ‡è½´å’ŒYåæ ‡è½´çš„è·¨åº¦
 		int xLow, xHigh, yLow, yHigh;
 		if (x1 > x2) {
 			xLow = floor(x2);
@@ -264,7 +264,7 @@ namespace mylsd {
 		}
 
 		float xRang = abs(x2 - x1), yRang = abs(y2 - y1);
-		// È·¶¨Ö±Ïß¿ç¶È½Ï´óµÄ×ø±êÖá×÷Îª²ÉÑùÖ÷Öá²¢²ÉÑù£¬±ê¼ÇÖ±ÏßÏñËØ
+		// ç¡®å®šç›´çº¿è·¨åº¦è¾ƒå¤§çš„åæ ‡è½´ä½œä¸ºé‡‡æ ·ä¸»è½´å¹¶é‡‡æ ·ï¼Œæ ‡è®°ç›´çº¿åƒç´ 
 		int xx_len = xHigh - xLow + 1, yy_len = yHigh - yLow + 1;
 
 		Vec3b color;
@@ -310,7 +310,7 @@ namespace mylsd {
 	}
 
 	Mat LSD::CreateMapCache(const Mat& MapGray, const float res) {
-		//¼ÆËãÍ¼ÖĞµãµ½×î½üµãµÄ×îĞ¡¾àÀë£¬ÔÚÌØÕ÷Æ¥ÅäÊ±ÓÃ×÷ÏÈÑé¸ÅÂÊ
+		//è®¡ç®—å›¾ä¸­ç‚¹åˆ°æœ€è¿‘ç‚¹çš„æœ€å°è·ç¦»ï¼Œåœ¨ç‰¹å¾åŒ¹é…æ—¶ç”¨ä½œå…ˆéªŒæ¦‚ç‡
 		const int cell_radius2 = powf(floor(z_occ_max_dis / res), 2);
 		const int height = MapGray.rows, width = MapGray.cols;
 		Mat mapCache = Mat(height, width, CV_32FC1, Scalar(z_occ_max_dis));
@@ -427,7 +427,7 @@ namespace mylsd {
 				kerVal[i] = exp(-0.5 * pow((i - kerMean) / sig, 2));
 				kerSum += kerVal[i];
 			}
-			// ¸ßË¹ºË¹éÒ»»¯
+			// é«˜æ–¯æ ¸å½’ä¸€åŒ–
 			for (int i = 0; i < hSize; i++) {
 				kerVal[i] /= kerSum;
 			}
@@ -437,22 +437,22 @@ namespace mylsd {
 	}
 
 	Mat LSD::GaussianSampler(const Mat& image) {
-		// ÊäÈë
-		// sca;   Ëõ·Å³ß¶È
-		// sig:   ¸ßË¹Ä£°åµÄ±ê×¼²î
+		// è¾“å…¥
+		// sca;   ç¼©æ”¾å°ºåº¦
+		// sig:   é«˜æ–¯æ¨¡æ¿çš„æ ‡å‡†å·®
 		//
-		// Êä³ö
-		// newIm: ¾­¹ı¸ßË¹²ÉÑùËõ·ÅºóµÄÍ¼Ïñ
+		// è¾“å‡º
+		// newIm: ç»è¿‡é«˜æ–¯é‡‡æ ·ç¼©æ”¾åçš„å›¾åƒ
 		const int prec = 3, xLim = image.cols, yLim = image.rows;
 		const int newXLim = floor(xLim * sca), newYLim = floor(yLim * sca);
 		Mat auxImage = Mat::zeros(yLim, newXLim, CV_32FC1);
 		Mat newImage = Mat::zeros(newYLim, newXLim, CV_32FC1);
 		
-		// Èç¹ûÊÇËõĞ¡Í¼ÏñÔòµ÷Õû±ê×¼²îµÄÖµ
+		// å¦‚æœæ˜¯ç¼©å°å›¾åƒåˆ™è°ƒæ•´æ ‡å‡†å·®çš„å€¼
 		//if (sca < 1.0)
 		sig = sig / sca;
 		
-		// ¸ßË¹Ä£°å´óĞ¡
+		// é«˜æ–¯æ¨¡æ¿å¤§å°
 		const int h = ceil(sig * sqrt(2.0 * prec * log(10))), douXLim = xLim * 2, douYLim = yLim * 2;
 		hSize = 1 + 2 * h;
 		unordered_map<float, vector<float>> kernelCache;
@@ -461,12 +461,12 @@ namespace mylsd {
 		int x, y, i, j, xc, yc;
 		float xx, yy, kerMean, newVal;
 		
-		// x·½Ïò²ÉÑù
+		// xæ–¹å‘é‡‡æ ·
 		for (x = 0; x < newXLim; x++) {
-			// È·¶¨¸ßË¹ºËÖĞĞÄÎ»ÖÃ
+			// ç¡®å®šé«˜æ–¯æ ¸ä¸­å¿ƒä½ç½®
 			xx = x / sca, xc = floor(xx + 0.5), kerMean = h + xx - xc;
 			kerVal = GenerateGaussianKernel(kernelCache, kerMean);
-			// ÓÃ±ßÔµ¶Ô³ÆµÄ·½Ê½½øĞĞX×ø±ê¸ßË¹ÂË²¨
+			// ç”¨è¾¹ç¼˜å¯¹ç§°çš„æ–¹å¼è¿›è¡ŒXåæ ‡é«˜æ–¯æ»¤æ³¢
 			for (y = 0; y < yLim; y++) {
 				newVal = 0;
 				for (i = 0; i < hSize; i++) {
@@ -485,12 +485,12 @@ namespace mylsd {
 			}
 		}
 
-		// y·½Ïò²ÉÑù
+		// yæ–¹å‘é‡‡æ ·
 		for (y = 0; y < newYLim; y++) {
-			// È·¶¨¸ßË¹ºËÖĞĞÄÎ»ÖÃ
+			// ç¡®å®šé«˜æ–¯æ ¸ä¸­å¿ƒä½ç½®
 			yy = y / sca, yc = floor(yy + 0.5), kerMean = h + yy - yc;
 			kerVal = GenerateGaussianKernel(kernelCache, kerMean);
-			// ÓÃ±ßÔµ¶Ô³ÆµÄ·½Ê½½øĞĞY×ø±ê¸ßË¹ÂË²¨
+			// ç”¨è¾¹ç¼˜å¯¹ç§°çš„æ–¹å¼è¿›è¡ŒYåæ ‡é«˜æ–¯æ»¤æ³¢
 			for (x = 0; x < newXLim; x++) {
 				newVal = 0;
 				for (i = 0; i < hSize; i++) {
@@ -514,22 +514,22 @@ namespace mylsd {
 	}
 
 	LSD::structRegionGrower LSD::RegionGrower(const int x, const int y, float regDeg, const float degThre) {
-		// ÊäÈë
-		// x£º        ÆğÊ¼µãXÖá×ø±ê
-		// y£º        ÆğÊ¼µãYÖá×ø±ê
-		// regDeg£º   ÇøÓòlevel - line³¡µÄÇã½Ç
-		// degThre:   ½Ç¶ÈãĞÖµ
+		// è¾“å…¥
+		// xï¼š        èµ·å§‹ç‚¹Xè½´åæ ‡
+		// yï¼š        èµ·å§‹ç‚¹Yè½´åæ ‡
+		// regDegï¼š   åŒºåŸŸlevel - lineåœºçš„å€¾è§’
+		// degThre:   è§’åº¦é˜ˆå€¼
 		//
-		// Êä³ö
-		// curMap£º   ¸ù¾İËù¸øÖÖ×ÓµãÉú³¤ËùµÃÇøÓòÖ¸Ê¾Í¼
-		// reg£º      µ±Ç°ÇøÓòËù°üº¬µÄËùÓĞĞÅÏ¢
-		// .x£º       ³õÊ¼µãX×ø±ê 
-		// .y£º       ³õÊ¼µãY×ø±ê
-		// .num£º     ÇøÓòËù°üº¬ÏñËØ
-		// .deg£º     ÇøÓòÆ½¾ù½Ç»¡¶È
-		// .pts£º     ÇøÓòËù°üº¬ÏñËØËùÓĞ×ø±êÖµ
+		// è¾“å‡º
+		// curMapï¼š   æ ¹æ®æ‰€ç»™ç§å­ç‚¹ç”Ÿé•¿æ‰€å¾—åŒºåŸŸæŒ‡ç¤ºå›¾
+		// regï¼š      å½“å‰åŒºåŸŸæ‰€åŒ…å«çš„æ‰€æœ‰ä¿¡æ¯
+		// .xï¼š       åˆå§‹ç‚¹Xåæ ‡ 
+		// .yï¼š       åˆå§‹ç‚¹Yåæ ‡
+		// .numï¼š     åŒºåŸŸæ‰€åŒ…å«åƒç´ 
+		// .degï¼š     åŒºåŸŸå¹³å‡è§’å¼§åº¦
+		// .ptsï¼š     åŒºåŸŸæ‰€åŒ…å«åƒç´ æ‰€æœ‰åæ ‡å€¼
 		//
-		// º¯Êı¹¦ÄÜ£º Í¨¹ıºÏ²¢ÏàÍ¬·½ÏòµÄlevel - line³¡ÊµÏÖÇøÓòÔö³¤
+		// å‡½æ•°åŠŸèƒ½ï¼š é€šè¿‡åˆå¹¶ç›¸åŒæ–¹å‘çš„level - lineåœºå®ç°åŒºåŸŸå¢é•¿
 		vector<int> regPts_x, regPts_y;
 		regPts_x.push_back(x);
 		regPts_y.push_back(y);
@@ -540,23 +540,23 @@ namespace mylsd {
 		int pntEnd = 1, pntNow, m, n;
 
 		for (pntNow = 0; pntNow < pntEnd; pntNow++) {
-			// ¼ìÑé8ÁÚÓòÏñËØÊÇ·ñÂú×ã½Ç»¡¶ÈãĞÖµ
+			// æ£€éªŒ8é‚»åŸŸåƒç´ æ˜¯å¦æ»¡è¶³è§’å¼§åº¦é˜ˆå€¼
 			for (m = regPts_y[pntNow] - 1; m <= regPts_y[pntNow] + 1; m++) {
 				for (n = regPts_x[pntNow] - 1; n <= regPts_x[pntNow] + 1; n++) {
-					// ¼ì²éÏñËØÖµµÄ×´Ì¬
+					// æ£€æŸ¥åƒç´ å€¼çš„çŠ¶æ€
 					if ((curMap[m].find(n) == curMap[m].end()) && (usedMap2[m].find(n) != usedMap2[m].end())) {
-						// ¼ì²éÊÇµ±Ç°»¡¶ÈÂú×ããĞÖµ »òÊÇ µ±Ç°»¡¶È¼õpiÂú×ããĞÖµ
+						// æ£€æŸ¥æ˜¯å½“å‰å¼§åº¦æ»¡è¶³é˜ˆå€¼ æˆ–æ˜¯ å½“å‰å¼§åº¦å‡piæ»¡è¶³é˜ˆå€¼
 						curDeg = FetchDegMapValue(m, n);
 						degDif = abs(regDeg - curDeg);
 						if (degDif > pi1_5)
 							degDif = abs(degDif - pi2);
 
 						if (degDif < degThre) {
-							// ¸üĞÂÍ³¼ÆËùµÃ»¡¶ÈµÄÕıÏÒºÍÓàÏÒÖµ
+							// æ›´æ–°ç»Ÿè®¡æ‰€å¾—å¼§åº¦çš„æ­£å¼¦å’Œä½™å¼¦å€¼
 							cosDeg += cos(curDeg);
 							sinDeg += sin(curDeg);
 							regDeg = atan2(sinDeg, cosDeg);
-							// ¼ÇÂ¼µ±Ç°ÏñËØ
+							// è®°å½•å½“å‰åƒç´ 
 							curMap[m][n] = 1;
 							regPts_x.push_back(n);
 							regPts_y.push_back(m);
@@ -583,16 +583,16 @@ namespace mylsd {
 	}
 
 	LSD::structCenterGetter LSD::CenterGetter(const int regNum, const vector<int>& regX, const vector<int>& regY) {
-		// ÊäÈë£º
-		// regNum£º  ÇøÓò°üº¬ÏñËØµãÊı
-		// regX£º    ÇøÓòÄÚÏñËØµãx×ø±êÏòÁ¿
-		// regY£º    ÇøÓòÄÚÏñËØµãy×ø±êÏòÁ¿
+		// è¾“å…¥ï¼š
+		// regNumï¼š  åŒºåŸŸåŒ…å«åƒç´ ç‚¹æ•°
+		// regXï¼š    åŒºåŸŸå†…åƒç´ ç‚¹xåæ ‡å‘é‡
+		// regYï¼š    åŒºåŸŸå†…åƒç´ ç‚¹yåæ ‡å‘é‡
 		//
-		// Êä³ö£º
-		// cenX£º    ÇøÓòÖØĞÄx×ø±ê
-		// cenY£º    ÇøÓòÖØĞÄy×ø±ê
+		// è¾“å‡ºï¼š
+		// cenXï¼š    åŒºåŸŸé‡å¿ƒxåæ ‡
+		// cenYï¼š    åŒºåŸŸé‡å¿ƒyåæ ‡
 		//
-		// º¯Êı¹¦ÄÜ£º¸ù¾İÇøÓò×ø±êºÍÏñËØµãµÄÈ¨ÖØ£¬ÕÒµ½ÇøÓòÖØĞÄ
+		// å‡½æ•°åŠŸèƒ½ï¼šæ ¹æ®åŒºåŸŸåæ ‡å’Œåƒç´ ç‚¹çš„æƒé‡ï¼Œæ‰¾åˆ°åŒºåŸŸé‡å¿ƒ
 		float cenX = 0, cenY = 0, weiSum = 0, pixWei;
 
 		for (int k = 0; k < regNum; k++) {
@@ -611,16 +611,16 @@ namespace mylsd {
 	}
 
 	float LSD::OrientationGetter(const structReg& reg, const float cenX, const float cenY, const float degThre) {
-		// ÊäÈë£º
-		// reg£º     ÇøÓò½á¹¹Ìå
-		// cenX£º    ¾ØĞÎÖØĞÄX×ø±ê
-		// cenY£º    ¾ØĞÎÖØĞÄY×ø±ê
-		// degThre:  ½Ç¶ÈãĞÖµ
+		// è¾“å…¥ï¼š
+		// regï¼š     åŒºåŸŸç»“æ„ä½“
+		// cenXï¼š    çŸ©å½¢é‡å¿ƒXåæ ‡
+		// cenYï¼š    çŸ©å½¢é‡å¿ƒYåæ ‡
+		// degThre:  è§’åº¦é˜ˆå€¼
 		//
-		// º¯Êı¹¦ÄÜ£ºÇóÈ¡ÇøÓòÖ÷¹ßĞÔÖá·½ÏòµÄ½Ç»¡¶ÈÖµ¡£
+		// å‡½æ•°åŠŸèƒ½ï¼šæ±‚å–åŒºåŸŸä¸»æƒ¯æ€§è½´æ–¹å‘çš„è§’å¼§åº¦å€¼ã€‚
 
 		float Ixx = 0, Iyy = 0, Ixy = 0, weiSum = 0, pixWei;
-		// ¼ÆËãÖ÷¹ßĞÔÖá×÷Îª¾ØĞÎ·½Ïò
+		// è®¡ç®—ä¸»æƒ¯æ€§è½´ä½œä¸ºçŸ©å½¢æ–¹å‘
 		for (int i = 0; i < reg.num; i++) {
 			pixWei = FetchMagMapValue(reg.regPts_y[i], reg.regPts_x[i]);
 			Ixx += pixWei * powf(reg.regPts_y[i] - cenY, 2);
@@ -639,7 +639,7 @@ namespace mylsd {
 		else
 			inertiaDeg = atan2(Ixy, lamb - Iyy);
 
-		// µ÷ÕûÒ»¸öpiµÄÎó²î
+		// è°ƒæ•´ä¸€ä¸ªpiçš„è¯¯å·®
 		float regDif = inertiaDeg - reg.deg;
 		while (regDif <= -pi) {
 			regDif += pi2;
@@ -655,33 +655,33 @@ namespace mylsd {
 	}
 
 	LSD::structRec LSD::RectangleConverter(const structReg& reg, const float degThre) {
-		// ÊäÈë
-		// reg£º     Ö¸Ê¾ÇøÓòµÄ½á¹¹Ìå
-		// degThre:  ½Ç¶ÈãĞÖµ
+		// è¾“å…¥
+		// regï¼š     æŒ‡ç¤ºåŒºåŸŸçš„ç»“æ„ä½“
+		// degThre:  è§’åº¦é˜ˆå€¼
 		//
-		// Êä³ö
-		// rec£º     »ñµÃµÄ¾ØĞÎ½á¹¹Ìå
-		// .x1£º     ¾ØĞÎ¶Ì±ßÄ³Ò»¶ÎÖĞµãX×ø±ê
-		// .y1£º     ¾ØĞÎ¶Ì±ßÄ³Ò»¶ÎÖĞµãY×ø±ê
-		// .x2£º     ¾ØĞÎ¶Ì±ßÁíÒ»¶ÎÖĞµãX×ø±ê
-		// .y2£º     ¾ØĞÎ¶Ì±ßÄ³Ò»¶ÎÖĞµãY×ø±ê
-		// .wid£º    ¾ØĞÎ¶Ì±ß³¤¶È
-		// .cX£º     ¾ØĞÎÖØĞÄX×ø±ê
-		// .cY£º     ¾ØĞÎÖØĞÄY×ø±ê
-		// .deg£º    ¾ØĞÎÖ÷·½Ïò½Ç»¡¶È
-		// .dx£º     ¾ØĞÎÖ÷·½Ïò½Ç»¡¶ÈÓàÏÒÖµ
-		// .dy£º     ¾ØĞÎÖ÷·½Ïò½Ç»¡¶ÈÕıÏÒÖµ
-		// .p£º      ¾ØĞÎÄÚµãlevel - line³¡½Ç»¡¶ÈÓë¾ØĞÎÖ÷·½Ïò½Ç»¡¶ÈÏà·û¸ÅÂÊ£»
-		// .prec£º   ÅĞ¶Ï¾ØĞÎÄÚµãlevel - line³¡½Ç»¡¶ÈÓë¾ØĞÎÖ÷·½Ïò½Ç»¡¶ÈµÄãĞÖµ£¨½Ç¶ÈÈİÈÌ¶È£©
+		// è¾“å‡º
+		// recï¼š     è·å¾—çš„çŸ©å½¢ç»“æ„ä½“
+		// .x1ï¼š     çŸ©å½¢çŸ­è¾¹æŸä¸€æ®µä¸­ç‚¹Xåæ ‡
+		// .y1ï¼š     çŸ©å½¢çŸ­è¾¹æŸä¸€æ®µä¸­ç‚¹Yåæ ‡
+		// .x2ï¼š     çŸ©å½¢çŸ­è¾¹å¦ä¸€æ®µä¸­ç‚¹Xåæ ‡
+		// .y2ï¼š     çŸ©å½¢çŸ­è¾¹æŸä¸€æ®µä¸­ç‚¹Yåæ ‡
+		// .widï¼š    çŸ©å½¢çŸ­è¾¹é•¿åº¦
+		// .cXï¼š     çŸ©å½¢é‡å¿ƒXåæ ‡
+		// .cYï¼š     çŸ©å½¢é‡å¿ƒYåæ ‡
+		// .degï¼š    çŸ©å½¢ä¸»æ–¹å‘è§’å¼§åº¦
+		// .dxï¼š     çŸ©å½¢ä¸»æ–¹å‘è§’å¼§åº¦ä½™å¼¦å€¼
+		// .dyï¼š     çŸ©å½¢ä¸»æ–¹å‘è§’å¼§åº¦æ­£å¼¦å€¼
+		// .pï¼š      çŸ©å½¢å†…ç‚¹level - lineåœºè§’å¼§åº¦ä¸çŸ©å½¢ä¸»æ–¹å‘è§’å¼§åº¦ç›¸ç¬¦æ¦‚ç‡ï¼›
+		// .precï¼š   åˆ¤æ–­çŸ©å½¢å†…ç‚¹level - lineåœºè§’å¼§åº¦ä¸çŸ©å½¢ä¸»æ–¹å‘è§’å¼§åº¦çš„é˜ˆå€¼ï¼ˆè§’åº¦å®¹å¿åº¦ï¼‰
 		//
-		// º¯Êı¹¦ÄÜ£º¸ù¾İÏß¶ÎÖ§³ÖÓòÑ°ÕÒ×îĞ¡ÄÚ½Ó¾ØÕó
+		// å‡½æ•°åŠŸèƒ½ï¼šæ ¹æ®çº¿æ®µæ”¯æŒåŸŸå¯»æ‰¾æœ€å°å†…æ¥çŸ©é˜µ
 
-		// ¼ÆËãÏß¶ÎÖ§³ÖÓòµÄÖØĞÄ
+		// è®¡ç®—çº¿æ®µæ”¯æŒåŸŸçš„é‡å¿ƒ
 		structCenterGetter CG = CenterGetter(reg.num, reg.regPts_x, reg.regPts_y);
-		// È·¶¨¾ØĞÎÖ÷·½Ïò
+		// ç¡®å®šçŸ©å½¢ä¸»æ–¹å‘
 		const float inertiaDeg = OrientationGetter(reg, CG.cenX, CG.cenY, degThre);
 
-		// È·¶¨¾ØĞÎ³¤ºÍ¿í
+		// ç¡®å®šçŸ©å½¢é•¿å’Œå®½
 		const float dx = cos(inertiaDeg), dy = sin(inertiaDeg);
 		float lenMin = 1e10, lenMax = 0, widMin = 1e10, widMax = 0, len, wid;
 		
@@ -693,7 +693,7 @@ namespace mylsd {
 			widMin = min(wid, widMin);
 			widMax = max(wid, widMax);
 		}
-		// ±£´æ¾ØĞÎĞÅÏ¢µ½½á¹¹Ìå
+		// ä¿å­˜çŸ©å½¢ä¿¡æ¯åˆ°ç»“æ„ä½“
 		structRec rec;
 		rec.x1 = CG.cenX + lenMin * dx;
 		rec.y1 = CG.cenY + lenMin * dy;
@@ -712,38 +712,38 @@ namespace mylsd {
 	}
 
 	LSD::structRegionRadiusReducer LSD::RegionRadiusReducer(structReg& reg, structRec& rec, vector<unordered_map<int, int>>& curMap) {
-		// ÊäÈë£º
-		// reg£º     µ±Ç°ÇøÓòµÄ½á¹¹Ìå
-		// rec£º     µ±Ç°ÇøÓòµÄ×îĞ¡Íâ½Ó¾ØĞÎµÄ½á¹¹Ìå
-		// curMap£º  µ±Ç°ÇøÓòÍ¼
+		// è¾“å…¥ï¼š
+		// regï¼š     å½“å‰åŒºåŸŸçš„ç»“æ„ä½“
+		// recï¼š     å½“å‰åŒºåŸŸçš„æœ€å°å¤–æ¥çŸ©å½¢çš„ç»“æ„ä½“
+		// curMapï¼š  å½“å‰åŒºåŸŸå›¾
 		//
-		// Êä³ö£º
-		// bool£º    ¼õĞ¡°ë¾¶ºóÊÇ·ñÄÜÕÒµ½ºÏÊÊ¾ØĞÎµÄÖ¸Ê¾·û
-		// curMap£º  µ±Ç°ÇøÓòÖ¸Ê¾Í¼
-		// reg£º     µ±Ç°ÇøÓò½á¹¹Ìå
-		// rec£º     µ±Ç°ÇøÓòµÄ×îĞ¡Íâ½Ó¾ØĞÎµÄ½á¹¹Ìå
+		// è¾“å‡ºï¼š
+		// boolï¼š    å‡å°åŠå¾„åæ˜¯å¦èƒ½æ‰¾åˆ°åˆé€‚çŸ©å½¢çš„æŒ‡ç¤ºç¬¦
+		// curMapï¼š  å½“å‰åŒºåŸŸæŒ‡ç¤ºå›¾
+		// regï¼š     å½“å‰åŒºåŸŸç»“æ„ä½“
+		// recï¼š     å½“å‰åŒºåŸŸçš„æœ€å°å¤–æ¥çŸ©å½¢çš„ç»“æ„ä½“
 		//
-		// º¯Êı¹¦ÄÜ£ºÓÃÓÚ¼õĞ¡ÇøÓòµÄ°ë¾¶´Ó¶ø¼õÉÙÇøÓòÄÚµãÊıÒÔÆÚÍûÉú³É¸üÊÊÒËµÄ×îĞ¡Íâ½Ó¾ØĞÎ¡£
+		// å‡½æ•°åŠŸèƒ½ï¼šç”¨äºå‡å°åŒºåŸŸçš„åŠå¾„ä»è€Œå‡å°‘åŒºåŸŸå†…ç‚¹æ•°ä»¥æœŸæœ›ç”Ÿæˆæ›´é€‚å®œçš„æœ€å°å¤–æ¥çŸ©å½¢ã€‚
 		structRegionRadiusReducer RRR;
 		RRR.curMap = move(curMap);
 		RRR.rec = move(rec);
 		RRR.reg = move(reg);
 		float den = RRR.reg.num / (sqrtf(powf(RRR.rec.x1 - RRR.rec.x2, 2) + powf(RRR.rec.y1 - RRR.rec.y2, 2)) * RRR.rec.wid);
-		// Èç¹ûÂú×ãÃÜ¶ÈãĞÖµ£¬ÔòÖ±½Ó·µ»Ø
+		// å¦‚æœæ»¡è¶³å¯†åº¦é˜ˆå€¼ï¼Œåˆ™ç›´æ¥è¿”å›
 		if (den > denThre) {
 			RRR.boolean = true;
 			return move(RRR);
 		}
-		// ½«Ô­ÇøÓòÉú³¤µÄ³õÊ¼µã×÷ÎªÖĞĞÄ²Î¿¼µã
+		// å°†åŸåŒºåŸŸç”Ÿé•¿çš„åˆå§‹ç‚¹ä½œä¸ºä¸­å¿ƒå‚è€ƒç‚¹
 		const int oriX = RRR.reg.x, oriY = RRR.reg.y;
 		int i, reg_num = RRR.reg.num;
-		// Ñ¡È¡Ö±Ïß×îÔ¶Á½¶ËÀëÖØĞÄ²Î¿¼µã¾àÀëÖĞ½Ï´óÖµ×÷ÎªËÑË÷°ë¾¶
+		// é€‰å–ç›´çº¿æœ€è¿œä¸¤ç«¯ç¦»é‡å¿ƒå‚è€ƒç‚¹è·ç¦»ä¸­è¾ƒå¤§å€¼ä½œä¸ºæœç´¢åŠå¾„
 		const float rad1 = sqrtf(powf(oriX - RRR.rec.x1, 2) + powf(oriY - RRR.rec.y1, 2));
 		const float rad2 = sqrtf(powf(oriX - RRR.rec.x2, 2) + powf(oriY - RRR.rec.y2, 2));
 		float rad = max(rad1, rad2), rad_square;
 
 		while (den < denThre) {
-			// ÒÔ0.75µÄËÑË÷ËÙ¶È¼õĞ¡ËÑË÷°ë¾¶£¬¼õÉÙÖ±ÏßÖ§³ÖÇøÓòÖĞµÄÏñËØÊı
+			// ä»¥0.75çš„æœç´¢é€Ÿåº¦å‡å°æœç´¢åŠå¾„ï¼Œå‡å°‘ç›´çº¿æ”¯æŒåŒºåŸŸä¸­çš„åƒç´ æ•°
 			rad *= 0.75;
 			rad_square = rad * rad;
 			i = 0;
@@ -761,12 +761,12 @@ namespace mylsd {
 				i++;
 			}
 			RRR.reg.num = reg_num;
-			// Èç¹ûÖ±ÏßÖ§³ÖÇøÓòÖĞÏñËØÊıÉÙÓÚ2¸ö£¬Ôò·ÅÆú¸ÃÇøÓò
+			// å¦‚æœç›´çº¿æ”¯æŒåŒºåŸŸä¸­åƒç´ æ•°å°‘äº2ä¸ªï¼Œåˆ™æ”¾å¼ƒè¯¥åŒºåŸŸ
 			if (RRR.reg.num < 2) {
 				RRR.boolean = false;
 				return move(RRR);
 			}
-			// ½«»ñµÃµÄÖ±ÏßÖ§³ÖÇøÓò×ª»»Îª×îĞ¡Íâ½Ó¾ØĞÎ
+			// å°†è·å¾—çš„ç›´çº¿æ”¯æŒåŒºåŸŸè½¬æ¢ä¸ºæœ€å°å¤–æ¥çŸ©å½¢
 			RRR.rec = RectangleConverter(RRR.reg, RRR.rec.prec);
 			den = RRR.reg.num / (sqrtf(powf(RRR.rec.x1 - RRR.rec.x2, 2) + powf(RRR.rec.y1 - RRR.rec.y2, 2)) * RRR.rec.wid);
 		}
@@ -775,24 +775,24 @@ namespace mylsd {
 	}
 
 	LSD::structRefiner LSD::Refiner(structReg& reg, structRec& rec, vector<unordered_map<int, int>>& curMap) {
-		// ÊäÈë£º
-		// reg£º      Ö±ÏßÖ§³ÖÇøÓòµÄ½á¹¹Ìå
-		// rec£º      Ö±ÏßÖ§³ÖÇøÓòµÄ×îĞ¡Íâ½Ó¾ØĞÎµÄ½á¹¹Ìå
-		// curMap£º   µ±Ç°ÇøÓòÉú³¤Í¼
+		// è¾“å…¥ï¼š
+		// regï¼š      ç›´çº¿æ”¯æŒåŒºåŸŸçš„ç»“æ„ä½“
+		// recï¼š      ç›´çº¿æ”¯æŒåŒºåŸŸçš„æœ€å°å¤–æ¥çŸ©å½¢çš„ç»“æ„ä½“
+		// curMapï¼š   å½“å‰åŒºåŸŸç”Ÿé•¿å›¾
 		//
-		// Êä³ö£º
-		// bool£º     ÊÇ·ñ³É¹¦ĞŞÕıÖ¸Ê¾·û
-		// curMap£º   µ±Ç°ÇøÓòÉú³¤Ö¸Ê¾Í¼
-		// reg£º      µ±Ç°ËùÉú³¤µÄÇøÓò
-		// rec£º      µ±Ç°ËùÉú³¤µÄÇøÓòµÄ×îĞ¡Íâ½Ó¾ØĞÎ
+		// è¾“å‡ºï¼š
+		// boolï¼š     æ˜¯å¦æˆåŠŸä¿®æ­£æŒ‡ç¤ºç¬¦
+		// curMapï¼š   å½“å‰åŒºåŸŸç”Ÿé•¿æŒ‡ç¤ºå›¾
+		// regï¼š      å½“å‰æ‰€ç”Ÿé•¿çš„åŒºåŸŸ
+		// recï¼š      å½“å‰æ‰€ç”Ÿé•¿çš„åŒºåŸŸçš„æœ€å°å¤–æ¥çŸ©å½¢
 		//
-		// º¯Êı¹¦ÄÜ£º ĞŞÕıËùÌáÈ¡µÄÖ±ÏßÖ§³ÖÇøÓòÒÔ¼°Ëù¶ÔÓ¦µÄ×îĞ¡Íâ½Ó¾ØĞÎ
+		// å‡½æ•°åŠŸèƒ½ï¼š ä¿®æ­£æ‰€æå–çš„ç›´çº¿æ”¯æŒåŒºåŸŸä»¥åŠæ‰€å¯¹åº”çš„æœ€å°å¤–æ¥çŸ©å½¢
 		structRefiner RF;
 		RF.curMap = move(curMap);
 		RF.rec = move(rec);
 		RF.reg = move(reg);
 		float den = RF.reg.num / (sqrtf(powf(RF.rec.x1 - RF.rec.x2, 2) + powf(RF.rec.y1 - RF.rec.y2, 2)) * RF.rec.wid);
-		// Èç¹ûÂú×ãÃÜ¶ÈãĞÖµÌõ¼şÔò²»ÓÃĞŞÕı
+		// å¦‚æœæ»¡è¶³å¯†åº¦é˜ˆå€¼æ¡ä»¶åˆ™ä¸ç”¨ä¿®æ­£
 		if (den >= denThre) {
 			RF.boolean = true;
 			return RF;
@@ -800,7 +800,7 @@ namespace mylsd {
 		const int oriX = RF.reg.x, oriY = RF.reg.y;
 		const float cenDeg = FetchDegMapValue(oriY, oriX), wid_square = powf(RF.rec.wid, 2);
 		float difSum = 0, squSum = 0, curDeg, degDif, pntNum = 0;
-		// ÀûÓÃÀëÇøÓòÉú³¤³õÊ¼µã¾àÀëĞ¡ÓÚ¾ØĞÎ¿í¶ÈµÄÏñËØ½øĞĞÇøÓò·½ÏòãĞÖµÖØ¹À¼Æ
+		// åˆ©ç”¨ç¦»åŒºåŸŸç”Ÿé•¿åˆå§‹ç‚¹è·ç¦»å°äºçŸ©å½¢å®½åº¦çš„åƒç´ è¿›è¡ŒåŒºåŸŸæ–¹å‘é˜ˆå€¼é‡ä¼°è®¡
 		for (int i = 0; i < RF.reg.num; i++) {
 			if (powf(oriX - RF.reg.regPts_x[i], 2) + powf(oriY - RF.reg.regPts_y[i], 2) < wid_square) {
 				curDeg = FetchDegMapValue(RF.reg.regPts_y[i], RF.reg.regPts_x[i]);
@@ -818,19 +818,19 @@ namespace mylsd {
 		}
 		float meanDif = difSum / pntNum;
 		float degThre = 2.0f * sqrtf((squSum - 2.0f * meanDif * difSum) / pntNum + powf(meanDif, 2));
-		// ÀûÓÃĞÂãĞÖµÖØĞÂ½øĞĞÇøÓòÉú³¤
+		// åˆ©ç”¨æ–°é˜ˆå€¼é‡æ–°è¿›è¡ŒåŒºåŸŸç”Ÿé•¿
 		structRegionGrower RG = RegionGrower(oriX, oriY, cenDeg, degThre);
 		RF.curMap = move(RG.curMap);
 		RF.reg = move(RG.reg);
-		// Èç¹ûÓÉÓÚĞÂãĞÖµµ¼ÖÂÉú³¤ÇøÓò¹ıĞ¡Ôò¶ªÆúµ±Ç°ÇøÓò
+		// å¦‚æœç”±äºæ–°é˜ˆå€¼å¯¼è‡´ç”Ÿé•¿åŒºåŸŸè¿‡å°åˆ™ä¸¢å¼ƒå½“å‰åŒºåŸŸ
 		if (RF.reg.num < 2) {
 			RF.boolean = false;
 			return move(RF);
 		}
-		// ÖØĞÂ½¨Á¢×îĞ¡Íâ½Ó¾ØĞÎ
+		// é‡æ–°å»ºç«‹æœ€å°å¤–æ¥çŸ©å½¢
 		RF.rec = RectangleConverter(RF.reg, degThre);
 		den = RF.reg.num / (sqrtf(powf(RF.rec.x1 - RF.rec.x2, 2) + powf(RF.rec.y1 - RF.rec.y2, 2)) * RF.rec.wid);
-		// Èç¹û»¹Î´Âú×ãÃÜ¶ÈãĞÖµ£¬Ôò¼õĞ¡ÇøÓò°ë¾¶
+		// å¦‚æœè¿˜æœªæ»¡è¶³å¯†åº¦é˜ˆå€¼ï¼Œåˆ™å‡å°åŒºåŸŸåŠå¾„
 		if (den < denThre) {
 			structRegionRadiusReducer RRR = RegionRadiusReducer(RF.reg, RF.rec, RF.curMap);
 			RF.boolean = move(RRR.boolean);
@@ -844,16 +844,16 @@ namespace mylsd {
 	}
 
 	float LSD::RectangleNFACalculator(const structRec& rec) {
-		// ÊäÈë£º
-		// rec£º     µ±Ç°ÇøÓò×îĞ¡Íâ½Ó¾ØĞÎµÄ½á¹¹Ìå
+		// è¾“å…¥ï¼š
+		// recï¼š     å½“å‰åŒºåŸŸæœ€å°å¤–æ¥çŸ©å½¢çš„ç»“æ„ä½“
 		//
-		// Êä³ö£º
-		// logNFA£º  Ğé¾¯ÊıµÄ×ÔÈ»¶ÔÊıÖµ
+		// è¾“å‡ºï¼š
+		// logNFAï¼š  è™šè­¦æ•°çš„è‡ªç„¶å¯¹æ•°å€¼
 		//
-		// º¯Êı¹¦ÄÜ£º¼ÆËã¾ØĞÎËùÔÚÇøÓòÏà¶ÔÓÚÔëÉùÄ£ĞÍµÄĞé¾¯Êı
+		// å‡½æ•°åŠŸèƒ½ï¼šè®¡ç®—çŸ©å½¢æ‰€åœ¨åŒºåŸŸç›¸å¯¹äºå™ªå£°æ¨¡å‹çš„è™šè­¦æ•°
 		int allPixNum = 0, aliPixNum = 0;
 
-		// ÕÒµ½¾ØĞÎËÄ¸ö¶¥µãµÄ×ø±ê
+		// æ‰¾åˆ°çŸ©å½¢å››ä¸ªé¡¶ç‚¹çš„åæ ‡
 		structRecVer recVer;
 		const float wid_half = rec.wid / 2.0,
 		verX[4] = {
@@ -868,7 +868,7 @@ namespace mylsd {
 			rec.y1 - rec.dx * wid_half
 		};
 
-		// ½«xÖµ×îĞ¡µÄµã×÷Îª1ºÅµã£¬È»ºóÄæÊ±ÕëÅÅĞòÆäÓàµã
+		// å°†xå€¼æœ€å°çš„ç‚¹ä½œä¸º1å·ç‚¹ï¼Œç„¶åé€†æ—¶é’ˆæ’åºå…¶ä½™ç‚¹
 		int offset, i, j;
 		if (rec.x1 < rec.x2 && rec.y1 <= rec.y2)
 			offset = 0;
@@ -882,8 +882,8 @@ namespace mylsd {
 			recVer.verX[i] = verX[(offset + i) % 4];
 			recVer.verY[i] = verY[(offset + i) % 4];
 		}
-		// Í³¼Æµ±Ç°¾ØĞÎÖĞÓë¾ØĞÎÖ÷¹ßĞÔÖá·½ÏòÏàÍ¬£¨Ğ¡ÓÚ½Ç¶ÈÈİÈÌ¶È£©µÄÏñËØµãÊıÁ¿ aliPixNum
-		// ¾ØĞÎÄÚËùÓĞÏñËØµãÊı allPixNum
+		// ç»Ÿè®¡å½“å‰çŸ©å½¢ä¸­ä¸çŸ©å½¢ä¸»æƒ¯æ€§è½´æ–¹å‘ç›¸åŒï¼ˆå°äºè§’åº¦å®¹å¿åº¦ï¼‰çš„åƒç´ ç‚¹æ•°é‡ aliPixNum
+		// çŸ©å½¢å†…æ‰€æœ‰åƒç´ ç‚¹æ•° allPixNum
 		const int xRang_len = abs(ceil(recVer.verX[0]) - floor(recVer.verX[2])) + 1;
 
 		vector<float> xRang(xRang_len);
@@ -933,7 +933,7 @@ namespace mylsd {
 				}
 			}
 		}
-		// ¼ÆËãNFAµÄ×ÔÈ»¶ÔÊıÖµ
+		// è®¡ç®—NFAçš„è‡ªç„¶å¯¹æ•°å€¼
 		const float aliThre = allPixNum * (coefA * powf(allPixNum, coefB) + coefC);
 		float logNFA = -1;
 		if (aliPixNum > aliThre)
@@ -943,14 +943,14 @@ namespace mylsd {
 	}
 
 	LSD::structRectangleImprover LSD::RectangleImprover(structRec& rec) {
-		// ÊäÈë£º
-		// rec£º     µ±Ç°¾ØĞÎ½á¹¹Ìå
+		// è¾“å…¥ï¼š
+		// recï¼š     å½“å‰çŸ©å½¢ç»“æ„ä½“
 		//
-		// Êä³ö£º
-		// logNFA£º  Ğé¾¯ÊıµÄ×ÔÈ»¶ÔÊıÖµ
-		// rec£º     ĞŞÕıºóµÄ¾ØĞÎ½á¹¹Ìå
+		// è¾“å‡ºï¼š
+		// logNFAï¼š  è™šè­¦æ•°çš„è‡ªç„¶å¯¹æ•°å€¼
+		// recï¼š     ä¿®æ­£åçš„çŸ©å½¢ç»“æ„ä½“
 		//
-		// º¯Êı¹¦ÄÜ£ºÀûÓÃĞé¾¯Êı(NFA, Number of False Alarms)ĞŞÕıÇøÓò×îĞ¡Íâ½Ó¾ØĞÎ
+		// å‡½æ•°åŠŸèƒ½ï¼šåˆ©ç”¨è™šè­¦æ•°(NFA, Number of False Alarms)ä¿®æ­£åŒºåŸŸæœ€å°å¤–æ¥çŸ©å½¢
 		structRectangleImprover RI = {
 			RectangleNFACalculator(rec),
 			move(rec)

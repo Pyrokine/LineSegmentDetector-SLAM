@@ -1,96 +1,97 @@
-#include <myRDP.h>
+ï»¿#include <myRDP.h>
 #include <baseFunc.h>
 
 using namespace cv;
 using namespace std;
-namespace myrdp{
+
+namespace myrdp {
 	const double pi = 4.0 * atan(1.0);
 
-	structFeatureScan FeatureScan(structMapParam mapParam, structLidarPointPolar *lidarPointPolar, int len_lp, int RegionPointLimitNumber, double threLine, double lineDistThreM) {
-		//RamerDouglasPeucker
-		double scanPose[3] = { 0 };
-		structRegionSegmentation RS = RegionSegmentation(lidarPointPolar, len_lp, scanPose, RegionPointLimitNumber);
-		SplitMerge(lidarPointPolar, len_lp, scanPose, RS, threLine);
+	RDP::structFeatureScan RDP::FeatureScan(structMapParam& mapParam, vector<structLidarPoint>& _lidarPoint, const int _lenLidarPoint, const int _regionPointLimitNumber, const float _threLine, const double lineDistThreM) {
+		// RamerDouglasPeucker
+		lidarPoint = _lidarPoint, regionPointLimitNumber = _regionPointLimitNumber, threLine = _threLine, lenLidarPoint = _lenLidarPoint;
 
-		//´¦Àí³¬³öãĞÖµµÄÖµ²¢È·¶¨Í¼Ïñ´óĞ¡
-		structLidarPointRec *lidarPointRecGlobal = (structLidarPointRec*)malloc(len_lp * sizeof(structLidarPointRec));
-		double minX = INFINITY, minY = INFINITY, maxX = 0, maxY = 0;
-		int i;
-		for (i = 0; i < len_lp; i++) {
-			lidarPointRecGlobal[i].x = floor((lidarPointPolar[i].range * cos(lidarPointPolar[i].angle + scanPose[2]) + scanPose[0] - mapParam.mapOriX) / mapParam.mapResol);
-			lidarPointRecGlobal[i].y = floor((lidarPointPolar[i].range * sin(lidarPointPolar[i].angle + scanPose[2]) + scanPose[1] - mapParam.mapOriY) / mapParam.mapResol);
-			lidarPointRecGlobal[i].num = i;
-			if (lidarPointRecGlobal[i].x < minX)
-				minX = lidarPointRecGlobal[i].x;
-			if (lidarPointRecGlobal[i].x > maxX)
-				maxX = lidarPointRecGlobal[i].x;
-			if (lidarPointRecGlobal[i].y < minY)
-				minY = lidarPointRecGlobal[i].y;
-			if (lidarPointRecGlobal[i].y > maxY)
-				maxY = lidarPointRecGlobal[i].y;
+		// ç”Ÿæˆç‚¹äº‘çš„ç›¸å…³æ•°æ®å¹¶ç¡®å®šç»˜åˆ¶å›¾åƒçš„å¤§å°
+		float minX = INFINITY, minY = INFINITY, maxX = 0, maxY = 0;
+		for (int i = 0; i < lenLidarPoint; i++) {
+			lidarPoint[i].originX = lidarPoint[i].range * cos(lidarPoint[i].radian + scanPose[2]) + scanPose[0];
+			lidarPoint[i].originY = lidarPoint[i].range * sin(lidarPoint[i].radian + scanPose[2]) + scanPose[1];
+			lidarPoint[i].globalX = (lidarPoint[i].originX - mapParam.mapOriX) / mapParam.mapResol;
+			lidarPoint[i].globalY = (lidarPoint[i].originY - mapParam.mapOriY) / mapParam.mapResol;
+			lidarPoint[i].angle = (int)(lidarPoint[i].radian / M_PI * 180.0 + 180);
+			lidarPoint[i].sn = i;
+			minX = min(minX, lidarPoint[i].globalX);
+			maxX = max(maxX, lidarPoint[i].globalX);
+			minY = min(minY, lidarPoint[i].globalY);
+			maxY = max(maxY, lidarPoint[i].globalY);
 		}
+
+		// åˆ†å‰²çº¿æ®µ
+		vector<structPointCell> pointCell = RegionSegmentation();
+		SplitMerge(pointCell);
+
 		int oriXLim = (int)ceil(maxX - minX), oriYLim = (int)ceil(maxY - minY);
-		//¸ù¾İµØÍ¼·Ö±æÂÊ¼ÆËãÕæÊµ×ø±êµÄÏñËØ×ø±ê
-		structLidarPointRec lidarPos;
-		lidarPos.x = floor((scanPose[0] - mapParam.mapOriX) / mapParam.mapResol - minX);
-		lidarPos.y = floor((scanPose[1] - mapParam.mapOriY) / mapParam.mapResol - minY);
+		// æ ¹æ®åœ°å›¾åˆ†è¾¨ç‡è®¡ç®—çœŸå®åæ ‡çš„åƒç´ åæ ‡
+		structLidarPoint lidarPos;
+		lidarPos.globalX = (scanPose[0] - mapParam.mapOriX) / mapParam.mapResol - minX;
+		lidarPos.globalY = (scanPose[1] - mapParam.mapOriY) / mapParam.mapResol - minY;
 
-		Mat lineIm = Mat::zeros(oriYLim, oriXLim, CV_8UC1);//¼ÇÂ¼Ö±ÏßÍ¼Ïñ
-		structLinesInfo *linesInfo = (structLinesInfo*)malloc(360 * sizeof(structLinesInfo));
-		int cnt_linesInfo = 0;
-		double lineDistThre = lineDistThreM / mapParam.mapResol;
+		Mat lineIm = Mat::zeros(oriYLim, oriXLim, CV_8UC1);  // è®°å½•ç›´çº¿å›¾åƒ
+		vector<structLinesInfo> linesInfo;
+		float lineDistThre = lineDistThreM / mapParam.mapResol;
 
-		//¸ù¾İ·Ö¸îµã½«Çø¿é·Ö¸ô¿ª²¢ÌáÈ¡Ö±ÏßĞÅÏ¢
-		vector<structPosition> scanImPoint;
-		for (i = 0; i < RS.cellNum; i++) {
-			int startPoint = RS.pointCell[i].startPointNum, endPoint = RS.pointCell[i].endPointNum;
-			int j, len_axis = 0, num_split = 1, *axis;
-			//´¦ÀíÍ·Î²ÏÎ½ÓÎÊÌâ
-			if (endPoint > startPoint) {
-				len_axis = endPoint - startPoint + 1;
-				axis = (int*)malloc(len_axis * sizeof(int));
-				for (j = 0; j < len_axis; j++) {
-					if (lidarPointPolar[startPoint + j].split == true)
-						axis[num_split++] = startPoint + j;
+		// æ ¹æ®åˆ†å‰²ç‚¹å°†åŒºå—åˆ†éš”å¼€å¹¶æå–ç›´çº¿ä¿¡æ¯
+		vector<structPosition> scanImgPoint;
+		vector<vector<structLidarPoint>> pointGroup;
+		int len_axis, thisPointNumber, orient, xLow, xHigh, yLow, yHigh, xx, yy, xx_len, yy_len;
+		float lineDist, x1, y1, x2, y2, k, ang;
+		for (int i = 0; i < pointCell.size(); i++) {
+			const int startPointNumber = pointCell[i].startPointNumber, endPointNumber = pointCell[i].endPointNumber;
+			len_axis = 0;
+			vector<int> listSplitNumber;
+			// å¤„ç†å¤´å°¾è¡”æ¥é—®é¢˜
+			if (endPointNumber > startPointNumber)
+				len_axis = endPointNumber - startPointNumber + 1;
+			else
+				len_axis = lenLidarPoint + endPointNumber - startPointNumber + 1;
+
+			vector<structLidarPoint> tempPointGroup;
+			for (int j = 0; j < len_axis; j++) {
+				thisPointNumber = startPointNumber + j;
+				if (thisPointNumber >= lenLidarPoint)
+					thisPointNumber -= lenLidarPoint;
+				tempPointGroup.push_back(lidarPoint[thisPointNumber]);
+
+				if (lidarPoint[thisPointNumber].split == true) {
+					listSplitNumber.push_back(thisPointNumber);
+					pointGroup.push_back(tempPointGroup);
+					tempPointGroup.clear();
 				}
 			}
-			else {
-				len_axis = len_lp + endPoint - startPoint + 1;
-				axis = (int*)malloc(len_axis * sizeof(int));
-				for (j = 0; j < len_axis; j++) {
-					int val = startPoint + j;
-					if (val >= len_lp)
-						val -= len_lp;
-					if (lidarPointPolar[val].split == true)
-						axis[num_split++] = val;
-				}
-			}
-			axis[0] = startPoint;
-			axis[num_split++] = endPoint;
+			if (tempPointGroup.size())
+				pointGroup.push_back(tempPointGroup);
+			listSplitNumber.insert(listSplitNumber.begin(), startPointNumber);
+			listSplitNumber.push_back(endPointNumber);
+			//std::printf("start:%d end:%d split:%d\n", startPointNumber, endPointNumber, (int)listSplitNumber.size());
 
-			for (j = 0; j < num_split - 1; j++) {
-				structLidarPointRec pointA, pointB;
-				pointA.x = lidarPointRecGlobal[axis[j]].x;
-				pointA.y = lidarPointRecGlobal[axis[j]].y;
-				pointB.x = lidarPointRecGlobal[axis[j + 1]].x;
-				pointB.y = lidarPointRecGlobal[axis[j + 1]].y;
-				double lineDist = sqrt(pow(pointA.x - pointB.x, 2) + pow(pointA.y - pointB.y, 2));
+			for (int j = 0; j < listSplitNumber.size() - 1; j++) {
+				structLidarPoint* pointA = &lidarPoint[listSplitNumber[j]], * pointB = &lidarPoint[listSplitNumber[j + 1]];
+				lineDist = sqrtf(powf(pointA->globalX - pointB->originX, 2) + powf(pointA->globalY - pointB->globalY, 2));
 				if (lineDist >= lineDistThre) {
-					//»ñµÃÖ±ÏßµÄ¶Ëµã×ø±ê
-					double x1 = pointA.x - minX;
-					double y1 = pointA.y - minY;
-					double x2 = pointB.x - minX;
-					double y2 = pointB.y - minY;
-					//ÇóÈ¡Ö±ÏßĞ±ÂÊ
-					double k = (y2 - y1) / (x2 - x1);
-					double ang = atand(k);
-					int orient = 1;
+					// è·å¾—ç›´çº¿çš„ç«¯ç‚¹åæ ‡
+					x1 = pointA->globalX - minX;
+					y1 = pointA->globalY - minY;
+					x2 = pointB->globalX - minX;
+					y2 = pointB->globalY - minY;
+					// æ±‚å–ç›´çº¿æ–œç‡
+					k = (y2 - y1) / (x2 - x1);
+					ang = atand(k);
+					orient = 1;
 					if (ang < 0) {
 						ang += 180;
 						orient = -1;
 					}
-					//È·¶¨Ö±ÏßX×ø±êÖáºÍY×ø±êÖáµÄ¿ç¶È
-					int xLow, xHigh, yLow, yHigh;
+					// ç¡®å®šç›´çº¿Xåæ ‡è½´å’ŒYåæ ‡è½´çš„è·¨åº¦
 					if (x1 > x2) {
 						xLow = (int)floor(x2);
 						xHigh = (int)ceil(x1);
@@ -107,263 +108,182 @@ namespace myrdp{
 						yLow = (int)floor(y1);
 						yHigh = (int)ceil(y2);
 					}
-					double xRang = abs(x2 - x1), yRang = abs(y2 - y1);
-					//È·¶¨Ö±Ïß¿ç¶È½Ï´óµÄ×ø±êÖá×÷Îª²ÉÑùÖ÷Öá²¢²ÉÑù
-					int xx_len = xHigh - xLow + 1, yy_len = yHigh - yLow + 1;
-					int *xx, *yy;
-					int m;
-					if (xRang > yRang) {
-						xx = (int*)malloc(xx_len * sizeof(int));
-						yy = (int*)malloc(xx_len * sizeof(int));
-						for (m = 0; m < xx_len; m++) {
-							xx[m] = m + xLow;
-							yy[m] = (int)round((xx[m] - x1) * k + y1);
-							if (xx[m] < 0 || xx[m] >= oriXLim || yy[m] < 0 || yy[m] >= oriYLim) {
-								xx[m] = 0;
-								yy[m] = 0;
-							}
-						}
-					}
-					else {
-						xx = (int*)malloc(yy_len * sizeof(int));
-						yy = (int*)malloc(yy_len * sizeof(int));
-						for (m = 0; m < yy_len; m++) {
-							yy[m] = m + yLow;
-							xx[m] = (int)round((yy[m] - y1) / k + x1);
-							if (xx[m] < 0 || xx[m] >= oriXLim || yy[m] < 0 || yy[m] >= oriYLim) {
-								xx[m] = 0;
-								yy[m] = 0;
-							}
-						}
-					}
-					//±ê¼ÇÖ±ÏßÏñËØ
+					// ç¡®å®šç›´çº¿è·¨åº¦è¾ƒå¤§çš„åæ ‡è½´ä½œä¸ºé‡‡æ ·ä¸»è½´å¹¶é‡‡æ ·
+					xx_len = xHigh - xLow + 1, yy_len = yHigh - yLow + 1;
 					if (xx_len > yy_len) {
-						for (m = 0; m < xx_len; m++) {
-							if (xx[m] != 0 && yy[m] != 0) {
-								lineIm.ptr<uint8_t>(yy[m])[xx[m]] = 255;
-								structPosition poseTemp;
-								poseTemp.x = xx[m];
-								poseTemp.y = yy[m];
-								scanImPoint.push_back(poseTemp);
+						for (int j = 0; j < xx_len; j++) {
+							xx = j + xLow;
+							yy = round((xx - x1) * k + y1);
+							if (xx >= 0 and xx < oriXLim and yy >= 0 and yy < oriYLim) {
+								lineIm.ptr<uint8_t>(yy)[xx] = 255;
+								structPosition tempScanImgPoint = {
+									xx, yy
+								};
+								scanImgPoint.push_back(tempScanImgPoint);
 							}
 						}
 					}
 					else {
-						for (m = 0; m < yy_len; m++) {
-							if (xx[m] != 0 && yy[m] != 0) {
-								lineIm.ptr<uint8_t>(yy[m])[xx[m]] = 255;
-								structPosition poseTemp;
-								poseTemp.x = xx[m];
-								poseTemp.y = yy[m];
-								scanImPoint.push_back(poseTemp);
+						for (int j = 0; j < yy_len; j++) {
+							yy = j + yLow;
+							xx = round((yy - y1) / k + x1);
+							if (xx >= 0 and xx < oriXLim and yy >= 0 and yy < oriYLim) {
+								lineIm.ptr<uint8_t>(yy)[xx] = 255;
+								structPosition tempScanImgPoint = {
+									xx, yy
+								};
+								scanImgPoint.push_back(tempScanImgPoint);
 							}
 						}
 					}
-					free(xx);
-					free(yy);
-					linesInfo[cnt_linesInfo].k = k;
-					linesInfo[cnt_linesInfo].b = (y1 + y2) / 2.0 - k * (x1 + x2) / 2.0;
-					linesInfo[cnt_linesInfo].dx = cosd(ang);
-					linesInfo[cnt_linesInfo].dy = sind(ang);
-					linesInfo[cnt_linesInfo].x1 = x1;
-					linesInfo[cnt_linesInfo].y1 = y1;
-					linesInfo[cnt_linesInfo].x2 = x2;
-					linesInfo[cnt_linesInfo].y2 = y2;
-					linesInfo[cnt_linesInfo].len = sqrt(pow(y2 - y1, 2) + pow(x2 - x1, 2));
-					linesInfo[cnt_linesInfo].orient = orient;
-					cnt_linesInfo++;
+
+					structLinesInfo tempLinesInfo = {
+						k,
+						(y1 + y2) / 2.0 - k * (x1 + x2) / 2.0,
+						cosd(ang),
+						sind(ang),
+						x1,
+						y1,
+						x2,
+						y2,
+						sqrt(pow(y2 - y1, 2) + pow(x2 - x1, 2)),
+						orient
+					};
+					linesInfo.push_back(tempLinesInfo);
 				}
 			}
 		}
+		//cv::imshow("rdpLineIm", lineIm);
+		//cv::waitKey(0);
+
+		_lidarPoint = move(lidarPoint);
 		structFeatureScan FS;
-		FS.lineIm = lineIm;
-		FS.linesInfo = linesInfo;
-		FS.lidarPos = lidarPos;
-		FS.len_linesInfo = cnt_linesInfo;
-		FS.scanImPoint = scanImPoint;
-		return FS;
+		FS.linesInfo = move(linesInfo);
+		FS.lidarPos = move(lidarPos);
+		FS.scanImPoint = move(scanImgPoint);
+		FS.pointGroup = move(pointGroup);
+		return move(FS);
 	}
 
-	void SplitMerge(structLidarPointPolar *lidarPointPolar, int len_lp, double *scanPose, structRegionSegmentation RS, double threLine) {
-		//ÊäÈë
-		//ScanRanges: ÁĞÏòÁ¿ ¼¤¹âÀ×´ïÉ¨ÃèµãÔÆÍ¼µÄÉ¨Ãè³¤¶È
-		//ScanAngles : ÁĞÏòÁ¿ ¼¤¹âÀ×´ïÉ¨ÃèµãÔÆÍ¼µÄÉ¨Ãè½Ç¶È
-		//ScanPose : ÁĞÏòÁ¿ ¼¤¹âÀ×´ïÔÚÈ«¾ÖµØÍ¼ÏÂµÄÎ»×Ë
-		//PointCell : cell(4 * cell_n)
-		//PointCell	µÚÒ»ĞĞ±íÊ¾ÆğÊ¼µãµÄ×ø±ê
-		//	      	µÚ¶şĞĞ±íÊ¾ÖÕÖ¹µãµÄ×ø±ê
-		//	        µÚÈıĞĞ±íÊ¾ÆğÊ¼µãµÄ×ø±ê¶ÔÓ¦ÔÚ ScanRanges ÉÏµÄĞòºÅ
-		//          µÚËÄĞĞ±íÊ¾ÖÕÖ¹µãµÄ×ø±ê¶ÔÓ¦ÔÚ ScanRanges ÉÏµÄĞòºÅ
-		//Threshold_line : ·ÖÁÑ³ÉÁ½ÌõÖ±ÏßµÄãĞÖµ
-		//Êä³ö
-		//PointInflection ÖĞµÄÁĞÏòÁ¿ ±íÊ¾ÇøÓòµÄ¹ÕµãĞòºÅ
-		structLidarPointRec *lidarPointRec = (structLidarPointRec*)malloc(len_lp * sizeof(structLidarPointRec));
-		int i;
-		for (i = 0; i < len_lp; i++) {
-			lidarPointRec[i].x = lidarPointPolar[i].range * cos(lidarPointPolar[i].angle + scanPose[2]) + scanPose[0];
-			lidarPointRec[i].y = lidarPointPolar[i].range * sin(lidarPointPolar[i].angle + scanPose[2]) + scanPose[1];
-			lidarPointRec[i].num = i;
-			//printf("%d %lf %lf\n", i, lidarPointRec[i].x, lidarPointRec[i].y);
+	void RDP::SplitMerge(vector<structPointCell>& pointCell) {
+		// æŒ‰RegionSegmentationåˆ†æˆçš„åˆ†åŒºåˆ†åˆ«è¿›è¡Œçº¿æ®µåˆ†å‰²
+		for (int i = 0; i < pointCell.size(); i++) {
+			SplitMergeAssistant(pointCell[i].startPointNumber, pointCell[i].endPointNumber);
 		}
-		for (i = 0; i < RS.cellNum; i++) {
-			//printf("%d %d %d\n", i, RS.pointCell[i].startPointNum, RS.pointCell[i].endPointNum);
-			SplitMergeAssistant(lidarPointPolar, lidarPointRec, len_lp, RS.pointCell[i].startPointNum, RS.pointCell[i].endPointNum, threLine);
-		}
-		//for (i = 0; i < len_lp; i++) {
-		//	if (lidarPointPolar[i].split == true)
-		//		printf("%d\n", i + 1);
-		//}
-
 	}
 
-	void SplitMergeAssistant(structLidarPointPolar *lidarPointPolar, structLidarPointRec *lidarPointRec, int len_lp, int startPoint, int endPoint, double threLine) {
-		//Ramer-Douglas-PeuckerËã·¨
-		//Ê¹ÓÃSplitMerge·Ö½âÍ¬Ò»ÇøÓòµÄµã
-		//RegionPoint  ÁĞÏòÁ¿Îª XY ×ø±ê
-		int i, len = 0, *axis;
-		if (endPoint > startPoint) {
-			len = endPoint - startPoint + 1;
-			axis = (int*)malloc(len * sizeof(int));
-			for (i = 0; i < len; i++) {
-				axis[i] = startPoint + i;
-			}
-		}
-		else {
-			len = len_lp + endPoint - startPoint + 1;
-			axis = (int*)malloc(len * sizeof(int));
-			for (i = 0; i < len; i++) {
-				axis[i] = startPoint + i;
-				if (axis[i] >= len_lp)
-					axis[i] -= len_lp;
-			}
-		}
+	void RDP::SplitMergeAssistant(const int startPointNumber, const int endPointNumber) {
+		// ä½¿ç”¨SplitMergeé€’å½’åˆ†è§£åŒä¸€åŒºåŸŸçš„ç‚¹
+		int len = 0;
+		if (endPointNumber > startPointNumber)
+			len = endPointNumber - startPointNumber + 1;
+		else
+			len = lenLidarPoint + endPointNumber - startPointNumber + 1;
 
 		if (len > 2) {
-			structLidarPointRec pointA = lidarPointRec[startPoint];
-			structLidarPointRec pointB = lidarPointRec[endPoint];
-			//y = kx + d
-			double k = (pointB.y - pointA.y) / (pointB.x - pointA.x);
-			double d = pointB.y - k * pointB.x;
-			double dist_max = 0;
-			int i, i_max = 0;
-			for (i = 1; i < len - 1; i++) {
-				structLidarPointRec pointC = lidarPointRec[axis[i]];
-				//¼ÆËãµãµ½Ö±ÏßµÄ¾àÀë
-				double dist = fabs(k * pointC.x - pointC.y + d) / sqrt(pow(k, 2) + 1);
+			structLidarPoint* pointA = &lidarPoint[startPointNumber];
+			structLidarPoint* pointB = &lidarPoint[endPointNumber];
+			// y = kx + d
+			const float k = (pointB->originY - pointA->originY) / (pointB->originX - pointA->originX);
+			const float d = pointB->originY - k * pointB->originX;
+			float dist_max = 0;
+			int i_max = 0, thisPointNumber;
+			for (int i = 1; i < len - 1; i++) {
+				// è®¡ç®—ç‚¹åˆ°ç›´çº¿çš„è·ç¦»
+				thisPointNumber = startPointNumber + i;
+				if (thisPointNumber >= lenLidarPoint)
+					thisPointNumber -= lenLidarPoint;
+				structLidarPoint* pointC = &lidarPoint[thisPointNumber];
+
+				const float dist = abs(k * pointC->originX - pointC->originY + d) / sqrtf(k * k + 1);
 				if (dist > dist_max) {
 					dist_max = dist;
-					i_max = axis[i];
+					i_max = thisPointNumber;
 				}
 			}
 
-			double threDist;
-			if (lidarPointPolar[lidarPointRec[i_max].num].range > 9)
-				threDist = lidarPointPolar[lidarPointRec[i_max].num].range * threLine;
+			float threDist;
+			if (lidarPoint[lidarPoint[i_max].sn].range > 9)
+				threDist = lidarPoint[lidarPoint[i_max].sn].range * threLine;
 			else
 				threDist = threLine;
 
+			//printf("%lf %lf\n", threDist, dist_max);
 			if (dist_max > threDist) {
-				SplitMergeAssistant(lidarPointPolar, lidarPointRec, len_lp, startPoint, i_max, threLine);
-				SplitMergeAssistant(lidarPointPolar, lidarPointRec, len_lp, i_max, endPoint, threLine);
-				lidarPointPolar[i_max].split = true;
+				SplitMergeAssistant(startPointNumber, i_max);
+				SplitMergeAssistant(i_max, endPointNumber);
+				lidarPoint[i_max].split = true;
 				//printf("imax=%d\n", i_max);
 			}
 		}
 	}
 
-	structRegionSegmentation RegionSegmentation(structLidarPointPolar *lidarPointPolar, int len_lp, double *scanPose, int RegionPointLimitNumber) {
-		//ÊäÈë£º
-		//ScanRanges: ÁĞÏòÁ¿ ¼¤¹âÀ×´ïÉ¨ÃèµãÔÆÍ¼µÄÉ¨Ãè³¤¶È
-		//ScanAngles : ÁĞÏòÁ¿ ¼¤¹âÀ×´ïÉ¨ÃèµãÔÆÍ¼µÄÉ¨Ãè½Ç¶È
-		//ScanPose : ÁĞÏòÁ¿ ¼¤¹âÀ×´ïÔÚÈ«¾ÖµØÍ¼ÏÂµÄÎ»×Ë
-		//RegionPointLimitNumber£º·Ö´Øºó£¬´ØÖĞµÄµãÊı¾İ¸öÊıµÄ×îĞ¡Öµ
-		//Êä³ö£º
-		//PointCell£º´ØÖĞµãµÄ×ø±ê£¬ÒÔ¼°±êºÅ
-		//º¯Êı¹¦ÄÜ£º½«¼¤¹âµãÔÆÍ¼·Ö´Ø´¦Àí£¬´ØÖĞµÄµãÔÆÃ»ÓĞÃ÷ÏÔ¼ä¾à
-		structLidarPointRec *lidarPointRec = (structLidarPointRec*)malloc(len_lp * sizeof(structLidarPointRec));
-		int i;
-		for (i = 0; i < len_lp; i++) {
-			lidarPointRec[i].x = lidarPointPolar[i].range * cos(lidarPointPolar[i].angle + scanPose[2]) + scanPose[0];
-			lidarPointRec[i].y = lidarPointPolar[i].range * sin(lidarPointPolar[i].angle + scanPose[2]) + scanPose[1];
-			//printf("%d %lf %lf\n", i, lidarPointRec[i].x, lidarPointRec[i].y);
-		}
-		structLidarPointRec startPoint;
-		startPoint.x = lidarPointRec[0].x;
-		startPoint.y = lidarPointRec[0].y;
+	vector<RDP::structPointCell> RDP::RegionSegmentation() {
+		// å°†æ¿€å…‰ç‚¹äº‘å›¾åˆ†ç°‡å¤„ç†ï¼Œä½¿ç°‡ä¸­çš„ç‚¹äº‘æ²¡æœ‰æ˜æ˜¾é—´è·
 		int startPointNumber = 0, cellNumber = 0;
+		structLidarPoint startPoint = lidarPoint[startPointNumber];
 
-		//pointCell¼ÇÂ¼ÆğÊ¼µãºÍÖÕÖ¹µãµÄ×ø±êÒÔ¼°ÔÚlidarPointRecÉÏµÄĞòºÅ
-		structPointCell *pointCell = (structPointCell*)malloc(len_lp * sizeof(structPointCell));
-		for (i = 0; i < len_lp; i++) {
-			double deltaX, deltaY;
-			if (i == len_lp - 1) {
-				deltaX = lidarPointRec[i].x - lidarPointRec[0].x;
-				deltaY = lidarPointRec[i].y - lidarPointRec[0].y;
+		// pointCellè®°å½•èµ·å§‹ç‚¹å’Œç»ˆæ­¢ç‚¹çš„åæ ‡ä»¥åŠåœ¨lidarPointä¸Šçš„åºå·
+		vector<structPointCell> pointCell;
+		float deltaX, deltaY, deltaDist, threDeltaDist;
+		for (int nowPointNumber = 0; nowPointNumber < lenLidarPoint; nowPointNumber++) {
+			if (nowPointNumber == lenLidarPoint - 1) {
+				deltaX = lidarPoint[nowPointNumber].originX - lidarPoint[0].originX;
+				deltaY = lidarPoint[nowPointNumber].originY - lidarPoint[0].originY;
 			}
 			else {
-				deltaX = lidarPointRec[i].x - lidarPointRec[i + 1].x;
-				deltaY = lidarPointRec[i].y - lidarPointRec[i + 1].y;
+				deltaX = lidarPoint[nowPointNumber].originX - lidarPoint[nowPointNumber + 1].originX;
+				deltaY = lidarPoint[nowPointNumber].originY - lidarPoint[nowPointNumber + 1].originY;
 			}
-			double deltaDist = sqrt(deltaX * deltaX + deltaY * deltaY);
-			double threDeltaDist = getThresholdDeltaDist(lidarPointPolar[i].range);
-			if (deltaDist > threDeltaDist) {
-				pointCell[cellNumber].startPointLoc = startPoint;
-				pointCell[cellNumber].startPointNum = startPointNumber;
-				pointCell[cellNumber].endPointLoc.x = lidarPointRec[i].x;
-				pointCell[cellNumber].endPointLoc.y = lidarPointRec[i].y;
-				pointCell[cellNumber].endPointNum = i;
-				if (abs(i - startPointNumber) >= RegionPointLimitNumber)
-					cellNumber++;
 
-				if (i < len_lp) {
-					startPoint.x = lidarPointRec[i + 1].x;
-					startPoint.y = lidarPointRec[i + 1].y;
-					startPointNumber = i + 1;
+			deltaDist = sqrtf(deltaX * deltaX + deltaY * deltaY);
+			threDeltaDist = getThresholdDeltaDist(lidarPoint[nowPointNumber].range);
+			if (deltaDist > threDeltaDist) {
+				if (abs(nowPointNumber - startPointNumber) >= regionPointLimitNumber) {
+					structPointCell tempPointCell;
+					tempPointCell.startPoint = startPoint;
+					tempPointCell.startPointNumber = startPointNumber;
+					tempPointCell.endPoint = lidarPoint[nowPointNumber];
+					tempPointCell.endPointNumber = nowPointNumber;
+					pointCell.push_back(tempPointCell);
+				}
+
+				if (nowPointNumber < lenLidarPoint - 1) {
+					startPointNumber = nowPointNumber + 1;
+					startPoint = lidarPoint[startPointNumber];
 				}
 			}
 
-			//Ê×Î²ÏàÁ¬
-			if (deltaDist <= threDeltaDist && i == len_lp - 1) {
-				pointCell[0].startPointLoc = startPoint;
-				pointCell[0].startPointNum = startPointNumber;
+			// é¦–å°¾ç›¸è¿
+			if (deltaDist <= threDeltaDist && nowPointNumber == lenLidarPoint - 1 && pointCell[0].startPointNumber == 0) {
+				pointCell[0].startPoint = startPoint;
+				pointCell[0].startPointNumber = startPointNumber;
 			}
 		}
-		structPointCell *pointCell2 = (structPointCell*)malloc(cellNumber * sizeof(structPointCell));
-		for (i = 0; i < cellNumber; i++) {
-			pointCell2[i].startPointLoc = pointCell[i].startPointLoc;
-			pointCell2[i].startPointNum = pointCell[i].startPointNum;
-			pointCell2[i].endPointLoc = pointCell[i].endPointLoc;
-			pointCell2[i].endPointNum = pointCell[i].endPointNum;
-		}
-		//for (i = 0; i < cellNumber; i++) {
-		//	printf("%d %d %d\n", i, pointCell2[i].startPointNum, pointCell2[i].endPointNum);
-		//}
-		structRegionSegmentation RS;
-		RS.pointCell = pointCell2;
-		RS.cellNum = cellNumber;
-		return RS;
+
+		return move(pointCell);
 	}
 
-	double getThresholdDeltaDist(double val) {
-		if (val <= 0.3)
-			return 0.02;
-		else if (val <= 0.5)
-			return 0.05;
-		else if (val <= 0.8)
-			return 0.11;
-		else if (val <= 1)
-			return 0.17;
-		else if (val <= 2)
-			return 0.6;
-		else if (val <= 3)
-			return 0.7;
-		else if (val <= 4)
-			return 0.85;
-		else if (val <= 5)
-			return 0.9;
-		else if (val <= 6)
-			return 1;
+	float RDP::getThresholdDeltaDist(const float val) {
+		if (val <= 0.3f)
+			return 0.02f;
+		else if (val <= 0.5f)
+			return 0.05f;
+		else if (val <= 0.8f)
+			return 0.11f;
+		else if (val <= 1.0f)
+			return 0.17f;
+		else if (val <= 2.0f)
+			return 0.6f;
+		else if (val <= 3.0f)
+			return 0.7f;
+		else if (val <= 4.0f)
+			return 0.85f;
+		else if (val <= 5.0f)
+			return 0.9f;
+		else if (val <= 6.0f)
+			return 1.0f;
 		else
-			return 1.1;
+			return 1.1f;
 	}
 }
